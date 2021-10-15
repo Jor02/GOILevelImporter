@@ -9,9 +9,7 @@ namespace GOILevelImporter.Core.Components
     {
         protected override void StartComp()
         {
-            GameObject player = GameObject.Find("/Player");
-            player.transform.position = transform.position;
-
+            ComponentHelper.Instance.Teleport(transform.position);
             Destroy(gameObject);
         }
     }

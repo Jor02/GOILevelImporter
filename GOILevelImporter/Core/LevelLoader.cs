@@ -84,6 +84,9 @@ namespace GOILevelImporter.Core
                 }
             }
 
+            //Creates helper class for custom components
+            new GameObject("ComponentHelper", typeof(Components.ComponentHelper));
+
             //Disable fog controllers
             GameObject bgCam = GameObject.Find("/Main Camera/BGCamera");
             Destroy(bgCam.GetComponent<FogControl>());
@@ -151,11 +154,8 @@ namespace GOILevelImporter.Core
                 GameObject targetGameObject = GameObject.Find(targetObject.path);
                 if (!targetGameObject) continue;
 
-                Debug.LogWarning(targetObject.components.Count);
-
                 foreach (LevelSettings.ObjectComponent component in targetObject.components)
                 {
-                    Debug.LogWarning(component.typeName);
                     System.Type type = System.Type.GetType(component.typeName);
                     if (type == null) continue;
 
