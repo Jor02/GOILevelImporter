@@ -9,7 +9,9 @@
 - [Get latest release here](https://github.com/Jor02/GOILevelImporter/releases/latest)
 - [Get BepInEx here here](https://github.com/BepInEx/BepInEx/releases/latest)
 
-1. Copy the contents of BepInEx_xxx_x.x.x.x.zip into the directory that contains GettingOverIt.exe (Most likely `C:\Program Files (x86)\Steam\steamapps\common\Getting Over It`)
+1. Copy the contents of BepInEx_xxx_x.x.x.x.zip into the directory that contains GettingOverIt.exe<br />
+(Which would most likely be `C:/Program Files (x86)/Steam/steamapps/common/Getting Over It/`)
+
 2. Copy the contents of CustomLeverImporterMod.zip into the `.../Getting Over It/BepInEx/plugins/` directory
 
 ## Third party licenses
