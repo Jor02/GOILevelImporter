@@ -5,8 +5,6 @@
 ![Lines of code](https://img.shields.io/tokei/lines/github/Jor02/GOILevelImporter?style=flat-square)
 > _A mod for [GOI](https://store.steampowered.com/app/240720/Getting_Over_It_with_Bennett_Foddy/) to import custom levels_
 
-![image](./preview.gif)
-
 ## Installation
 - [Get latest release here](https://github.com/Jor02/GOILevelImporter/releases/latest)
 - [Get BepInEx here here](https://github.com/BepInEx/BepInEx/releases/latest)
