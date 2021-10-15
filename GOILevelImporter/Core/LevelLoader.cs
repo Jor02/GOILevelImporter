@@ -7,6 +7,7 @@ using System.Collections;
 using Newtonsoft.Json;
 using System.Reflection;
 using System;
+using GOILevelImporter.Utils;
 
 namespace GOILevelImporter.Core
 {
@@ -87,6 +88,9 @@ namespace GOILevelImporter.Core
             GameObject bgCam = GameObject.Find("/Main Camera/BGCamera");
             Destroy(bgCam.GetComponent<FogControl>());
             Destroy(bgCam.GetComponent<FogVolumeRenderer>());
+
+            //Fixes error in PoseControl
+            Resources.FindObjectsOfTypeAll<PoseControl>()[0].SetPrivateFieldValue("interestingItems", new Transform[0]);
 
             AsyncOperation asyncLoad =  SceneManager.LoadSceneAsync(currectBundle.GetAllScenePaths()[0], LoadSceneMode.Additive);
 
