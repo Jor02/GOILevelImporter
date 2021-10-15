@@ -16,6 +16,7 @@ namespace GOILevelImporter.Core
         #region Fields/Properties
         public static LevelLoader Instance { get; private set; }
         public static bool Playing { get; private set; } = false;
+        public static string Scene { get; set; }
         public long HeaderSize { get; private set; } = 0;
         public static AssetBundle currectBundle { get; private set; }
         public static string currentBundlePath { get; private set; }
@@ -156,7 +157,7 @@ namespace GOILevelImporter.Core
 
                 foreach (LevelSettings.ObjectComponent component in targetObject.components)
                 {
-                    System.Type type = System.Type.GetType(component.typeName);
+                    Type type = Type.GetType(component.typeName);
                     if (type == null) continue;
 
                     Component addedComponent = targetGameObject.AddComponent(type);
@@ -164,7 +165,7 @@ namespace GOILevelImporter.Core
                     foreach (LevelSettings.Member member in component.members)
                     {
                         FieldInfo field;
-                        System.Type memberType;
+                        Type memberType;
 
                         try
                         {
@@ -173,7 +174,7 @@ namespace GOILevelImporter.Core
                         }
                         catch
                         {
-                            UnityEngine.Debug.LogWarning($"{addedComponent.name} doesn't have field {member.name}");
+                            Debug.LogWarning($"{addedComponent.name} doesn't have field {member.name}");
                             continue;
                         }
 
@@ -195,10 +196,14 @@ namespace GOILevelImporter.Core
                             {
                                 field.SetValue(addedComponent, bool.Parse(member.value));
                             }
+                            else if (memberType.IsEnum)
+                            {
+                                field.SetValue(addedComponent, Enum.Parse(memberType, member.value));
+                            }
                         }
                         catch
                         {
-                            UnityEngine.Debug.LogWarning($"Failed to parse member {field.Name} of {addedComponent.name}");
+                            Debug.LogWarning($"Failed to parse member {field.Name} of {addedComponent.name}");
                         }
                     }
 

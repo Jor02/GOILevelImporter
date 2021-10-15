@@ -62,6 +62,9 @@
       <HintPath>..\Libs\UnityEngine.JSONSerializeModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>..\Libs\UnityEngine.Physics2DModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
       <HintPath>..\Libs\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>false</Private>

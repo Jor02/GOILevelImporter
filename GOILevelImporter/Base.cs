@@ -17,17 +17,35 @@ namespace GOILevelImporter
     public class Base : BaseUnityPlugin
     {
         private static ConfigEntry<string> configSelectedLevel { get; set; }
+        public static ConfigEntry<string> configTargetSceneLevel { get; set; }
+        public static ConfigEntry<string> configTargetScene { get; set; }
 
         void Awake()
         {
             new GameObject("Level Loader", typeof(Core.LevelLoader));
 
+            #region Configs
             configSelectedLevel = Config.Bind(
                 "General",
                 "currentLevel",
                 string.Empty,
                 "The current selected level"
             );
+
+            configTargetScene = Config.Bind(
+                "General",
+                "targetSceneLevel",
+                string.Empty,
+                "The current scene level"
+            );
+
+            configTargetScene = Config.Bind(
+                "General",
+                "targetScene",
+                string.Empty,
+                "The current scene"
+            );
+            #endregion
 
             SceneManager.sceneLoaded += OnSceneLoaded;
 
