@@ -56,6 +56,9 @@ namespace GOILevelImporter.Core
             targetPath += "Levels/";
         }
 
+        /// <summary>
+        /// Unloads current loaded level
+        /// </summary>
         public void Reset()
         {
             if (currectBundle)
@@ -64,6 +67,12 @@ namespace GOILevelImporter.Core
         }
 
         #region Loading
+        /// <summary>
+        /// Loads the level
+        /// </summary>
+        /// <param name="path">Path to level file</param>
+        /// <param name="HeaderSize">Byte size of the header (to skip)</param>
+        /// <returns></returns>
         public IEnumerator BeginLoadLevel(string path, ulong HeaderSize)
         {
             if (!Playing)
@@ -107,6 +116,9 @@ namespace GOILevelImporter.Core
             Time.timeScale = 1;
         }
 
+        /// <summary>
+        /// Checks is gameobject is required for the game to work
+        /// </summary>
         private bool requiredGameObject(GameObject target)
         {
             switch (target.name)
