@@ -290,7 +290,7 @@ namespace GOILevelImporter.Core
                             if (dictionary.ContainsKey("credit")) author = dictionary["credit"];
                         }
 
-                        metadata = new LevelMetadata(levelName, author, levelName + " (Legacy Mode)", true, null, 0);
+                        metadata = new LevelMetadata(levelName, author, levelName + " (Legacy Mode)", true, false, null, 0);
                         #endregion
                     }
                     else if (path.EndsWith(".glf"))
@@ -323,9 +323,10 @@ namespace GOILevelImporter.Core
                                 string LevelName = memReader.ReadString();
                                 string Author = memReader.ReadString();
                                 string Description = memReader.ReadString();
+                                bool hasThumbnail = memReader.ReadBoolean();
                                 byte ThumbnailFormat = memReader.ReadByte();
                                 byte[] Thumbnail = memReader.ReadBytes((int)(memStream.Length - memStream.Position));
-                                metadata = new LevelMetadata(LevelName, Author, Description, false, Thumbnail, ThumbnailFormat);
+                                metadata = new LevelMetadata(LevelName, Author, Description, false, hasThumbnail, Thumbnail, ThumbnailFormat);
                             }
                         }
                         #endregion

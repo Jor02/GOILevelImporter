@@ -17,13 +17,15 @@ namespace GOILevelImporter.Core.Menu
         public bool legacy;
         public int id;
         public ulong headerSize;
+        public bool hasThumbnail;
         public Sprite thumbnail;
         public Image background;
 
         public LevelButton Init(string levelPath, string levelName, string author, string description, int id, bool legacy, Texture2D thumbnail, Action<int> onClickEvent, long headerSize)
         {
             transform.Find("TextArea").GetChild(0).GetComponent<TextMeshProUGUI>().text = levelName;
-            
+
+            hasThumbnail = (thumbnail != null);
             if (!legacy) {
                 this.thumbnail = (thumbnail != null) ? Sprite.Create(thumbnail, new Rect(0.0f, 0.0f, thumbnail.width, thumbnail.height), Vector2.one / 2) : AssetImporter.embededBundle.LoadAsset<Sprite>("MissingThumb");
                 transform.Find("Thumbnail").GetComponent<Image>().sprite = this.thumbnail;
