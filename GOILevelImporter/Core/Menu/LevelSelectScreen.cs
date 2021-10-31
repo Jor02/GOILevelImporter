@@ -19,6 +19,9 @@ namespace GOILevelImporter.Core.Menu
         public Text sidebarAuthor;
         public Text sidebarText;
 
+        public GameObject sidebarWarning;
+        public Text sidebarWarningText;
+
 
         void Awake()
         {
@@ -31,6 +34,9 @@ namespace GOILevelImporter.Core.Menu
             sidebarText = transform.Find("TopArea/Description/Description/Text").GetComponent<Text>();
             sidebarName = transform.Find("TopArea/Description/Title").GetComponent<Text>();
             sidebarAuthor = transform.Find("TopArea/Description/Author").GetComponent<Text>();
+
+            sidebarWarning = transform.Find("TopArea/Description/Description/Warning").gameObject;
+            sidebarWarningText = transform.Find("TopArea/Description/Description/Warning/WarningText").GetComponent<Text>();
 
             Button closeSide = transform.Find("TopArea/Description/OK").GetComponent<Button>();
             closeSide.onClick = new Button.ButtonClickedEvent();

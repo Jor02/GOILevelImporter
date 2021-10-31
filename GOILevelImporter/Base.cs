@@ -171,6 +171,8 @@ namespace GOILevelImporter
             configSelectedLevel.SetSerializedValue(levelButtons[id].levelPath);
 
             isDefault = (id == 0);
+            levelScreen.sidebarWarning.SetActive(levelButtons[id].legacy);
+            if (levelButtons[id].legacy) levelScreen.sidebarWarningText.text = "Custom components don't currently\nwork on legacy maps.";
         }
     }
 }
