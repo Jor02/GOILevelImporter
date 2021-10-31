@@ -38,17 +38,17 @@ namespace GOILevelImporter.Core.Components
 		private void OnTriggerEnter2D(Collider2D col)
 		{
 			Debug.Log(TriggerType);
-			if ((col.gameObject.layer != 8 && Detect == CustomTrigger.DetectMode.PlayerOnly) || (col.gameObject.layer == 8 && Detect == CustomTrigger.DetectMode.PropsOnly))
+			if ((col.gameObject.layer != 8 && Detect == DetectMode.PlayerOnly) || (col.gameObject.layer == 8 && Detect == DetectMode.PropsOnly))
 			{
 				return;
 			}
-			if (Detect == CustomTrigger.DetectMode.SpecificProp && !TargetProp.Contains(col.gameObject))
+			if (Detect == DetectMode.SpecificProp && !TargetProp.Contains(col.gameObject))
 			{
 				return;
 			}
 			switch (TriggerType)
 			{
-				case CustomTrigger.Trigger.Reset:
+				case Trigger.Reset:
 					PlayerPrefs.DeleteKey("NumSaves");
 					PlayerPrefs.DeleteKey("SaveGame0");
 					PlayerPrefs.DeleteKey("SaveGame1");
@@ -56,7 +56,7 @@ namespace GOILevelImporter.Core.Components
 					PlayerPrefs.Save();
 					SceneManager.LoadScene("Mian");
 					return;
-				case CustomTrigger.Trigger.Teleport:
+				case Trigger.Teleport:
 					ComponentHelper.Instance.Teleport(Destination);
 					if (!Mode)
 					{
@@ -67,7 +67,7 @@ namespace GOILevelImporter.Core.Components
 						}
 					}
 					return;
-				case CustomTrigger.Trigger.Finish:
+				case Trigger.Finish:
 					{
 						MonoBehaviour.print("Finished");
 						PlayerPrefs.SetFloat("LastTime", UnityEngine.Object.FindObjectOfType<Narrator>().timePlayedThisGame);
@@ -83,7 +83,7 @@ namespace GOILevelImporter.Core.Components
 						SceneManager.LoadScene("Reward Loader");
 						return;
 					}
-				case CustomTrigger.Trigger.Playsound:
+				case Trigger.Playsound:
 					if (!source.isPlaying)
 					{
 						source.PlayOneShot(Sound);
@@ -97,7 +97,7 @@ namespace GOILevelImporter.Core.Components
 						}
 					}
 					return;
-				case CustomTrigger.Trigger.Animation:
+				case Trigger.Animation: //TODO: Fix animation type not parsing in component JSON (or maybe using newtonsoft.json in unity would work)
 					if (!string.IsNullOrEmpty(anim))
 					{
 						animation.Play(anim);
@@ -105,10 +105,10 @@ namespace GOILevelImporter.Core.Components
 					}
 					animation.Play();
 					return;
-				case CustomTrigger.Trigger.Event:
+				case Trigger.Event:
 					TriggerEvent.Invoke();
 					return;
-				case CustomTrigger.Trigger.SwitchScene:
+				case Trigger.SwitchScene:
 					PlayerPrefs.DeleteKey("NumSaves");
 					PlayerPrefs.DeleteKey("SaveGame0");
 					PlayerPrefs.DeleteKey("SaveGame1");
