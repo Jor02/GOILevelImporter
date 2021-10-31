@@ -63,7 +63,7 @@ namespace GOILevelImporter
                 StartCoroutine(SetupMenu());
             } else if (target.name == "Mian" && mode != LoadSceneMode.Additive && !isDefault) // If we restarted
             {
-                StartCoroutine(Core.LevelLoader.Instance.BeginLoadLevel("", 0));
+                StartCoroutine(Core.LevelLoader.Instance.LoadLevel());
             }
         }
 
@@ -153,8 +153,9 @@ namespace GOILevelImporter
         }
         
         public static string levelPath { get; private set; }
+        public static bool legacy { get; private set; }
         public static ulong levelHeaderSize { get; private set; }
-        public static bool isDefault;
+        public static bool isDefault { get; private set; }
         private void UpdateSelectedLevel(int id)
         {
             foreach (LevelButton b in levelButtons)
@@ -165,26 +166,29 @@ namespace GOILevelImporter
                     b.background.color = new Color(1, 1, 1, 0.392156863f);
             }
 
-            levelScreen.sidebarThumbnail.sprite = levelButtons[id].thumbnail;
-            levelScreen.sidebarText.text = levelButtons[id].description;
-            levelScreen.sidebarName.text = levelButtons[id].levelName;
-            levelScreen.sidebarAuthor.text = string.IsNullOrWhiteSpace(levelButtons[id].author) ? "" : "By " + levelButtons[id].author;
+            LevelButton curButton = levelButtons[id];
 
-            LevelTransitionScreen.Instance.Name.text = levelButtons[id].levelName;
+            levelScreen.sidebarThumbnail.sprite = curButton.thumbnail;
+            levelScreen.sidebarText.text = curButton.description;
+            levelScreen.sidebarName.text = curButton.levelName;
+            levelScreen.sidebarAuthor.text = string.IsNullOrWhiteSpace(curButton.author) ? "" : "By " + curButton.author;
+
+            LevelTransitionScreen.Instance.Name.text = curButton.levelName;
             LevelTransitionScreen.Instance.Author.text = levelScreen.sidebarAuthor.text;
 
-            LevelTransitionScreen.Instance.ThumbnailObject.SetActive(levelButtons[id].hasThumbnail);
-            if (levelButtons[id].hasThumbnail)
-                LevelTransitionScreen.Instance.Thumbnail.sprite = levelButtons[id].thumbnail;
+            LevelTransitionScreen.Instance.ThumbnailObject.SetActive(curButton.hasThumbnail);
+            if (curButton.hasThumbnail)
+                LevelTransitionScreen.Instance.Thumbnail.sprite = curButton.thumbnail;
 
-            levelPath = levelButtons[id].levelPath;
-            levelHeaderSize = levelButtons[id].headerSize;
+            levelPath = curButton.levelPath;
+            levelHeaderSize = curButton.headerSize;
 
-            configSelectedLevel.SetSerializedValue(levelButtons[id].levelPath);
+            configSelectedLevel.SetSerializedValue(curButton.levelPath);
 
             isDefault = (id == 0);
-            levelScreen.sidebarWarning.SetActive(levelButtons[id].legacy);
-            if (levelButtons[id].legacy) levelScreen.sidebarWarningText.text = "Custom components don't currently\nwork on legacy maps.";
+            legacy = curButton.legacy;
+            levelScreen.sidebarWarning.SetActive(curButton.legacy);
+            if (curButton.legacy) levelScreen.sidebarWarningText.text = "Custom components don't currently\nwork on legacy maps.";
         }
     }
 }

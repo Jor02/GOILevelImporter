@@ -16,6 +16,7 @@ namespace GOILevelImporter.Core
         #region Fields/Properties
         public static LevelLoader Instance { get; private set; }
         public static bool Playing { get; private set; } = false;
+        public static bool Legacy { get; private set; } = false;
         public static string Scene { get; set; }
         public long HeaderSize { get; private set; } = 0;
         public static AssetBundle currectBundle { get; private set; }
@@ -73,16 +74,19 @@ namespace GOILevelImporter.Core
         /// <param name="path">Path to level file</param>
         /// <param name="HeaderSize">Byte size of the header (to skip)</param>
         /// <returns></returns>
-        public IEnumerator BeginLoadLevel(string path, ulong HeaderSize)
+        public void BeginLoadLevel(string path, bool legacy, ulong HeaderSize)
         {
             if (!Playing)
             {
                 Playing = true;
+                Legacy = legacy;
                 currentBundlePath = path;
                 currectBundle = AssetBundle.LoadFromFile(path, 0, HeaderSize);
-                yield break;
             }
+        }
 
+        public IEnumerator LoadLevel()
+        {
             yield return new WaitForEndOfFrame();
             Time.timeScale = 0;
 
@@ -112,7 +116,9 @@ namespace GOILevelImporter.Core
             yield return new WaitForEndOfFrame();
 
             //Add modded components
-            AddComponents();
+            if (!Legacy)
+                AddComponents();
+
             Menu.LevelTransitionScreen.Instance.FadeIn();
             Time.timeScale = 1;
         }
