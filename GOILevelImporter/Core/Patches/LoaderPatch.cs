@@ -12,7 +12,7 @@ namespace GOILevelImporter.Core.Patches
     {
         static void Prefix(Loader __instance, ref bool ___loadFinished, ref bool ___safeToClick)
         {
-            if (___loadFinished && ___safeToClick)
+            if (___loadFinished && ___safeToClick && !Base.isDefault)
             {
                 __instance.StartCoroutine(LevelLoader.Instance.BeginLoadLevel(Base.levelPath, Base.levelHeaderSize));
             }

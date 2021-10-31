@@ -61,7 +61,7 @@ namespace GOILevelImporter
             {
                 Core.LevelLoader.Instance.Reset();
                 StartCoroutine(SetupMenu());
-            } else if (target.name == "Mian" && mode != LoadSceneMode.Additive) // If we restarted
+            } else if (target.name == "Mian" && mode != LoadSceneMode.Additive && !isDefault) // If we restarted
             {
                 StartCoroutine(Core.LevelLoader.Instance.BeginLoadLevel("", 0));
             }
@@ -149,6 +149,7 @@ namespace GOILevelImporter
         
         public static string levelPath { get; private set; }
         public static ulong levelHeaderSize { get; private set; }
+        public static bool isDefault;
         private void UpdateSelectedLevel(int id)
         {
             foreach (LevelButton b in levelButtons)
@@ -168,6 +169,8 @@ namespace GOILevelImporter
             levelHeaderSize = levelButtons[id].headerSize;
 
             configSelectedLevel.SetSerializedValue(levelButtons[id].levelPath);
+
+            isDefault = (id == 0);
         }
     }
 }
