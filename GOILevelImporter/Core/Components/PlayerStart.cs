@@ -9,7 +9,11 @@ namespace GOILevelImporter.Core.Components
     {
         protected override void StartComp()
         {
-            ComponentHelper.Instance.Teleport(transform.position);
+            if (!PlayerPrefs.HasKey("SaveGame0") || !PlayerPrefs.HasKey("SaveGame1"))
+            {
+                ComponentHelper.Instance.Teleport(transform.position);
+            }
+
             Destroy(gameObject);
         }
     }
