@@ -100,6 +100,11 @@ namespace GOILevelImporter
             levelScreen.levelScreen.SetActive(false);
             #endregion
 
+            #region Setup Level Transition
+            if (LevelTransitionScreen.Instance == null)
+                AssetImporter.createLevelTransition(UI);
+            #endregion
+
             #region Setup Level Select Button
             //Main Level Select Button
             Transform SelectLevelButton = menuButtonGenerator.AddButton("Select Level", () =>
@@ -164,6 +169,13 @@ namespace GOILevelImporter
             levelScreen.sidebarText.text = levelButtons[id].description;
             levelScreen.sidebarName.text = levelButtons[id].levelName;
             levelScreen.sidebarAuthor.text = string.IsNullOrWhiteSpace(levelButtons[id].author) ? "" : "By " + levelButtons[id].author;
+
+            LevelTransitionScreen.Instance.Name.text = levelButtons[id].levelName;
+            LevelTransitionScreen.Instance.Author.text = levelScreen.sidebarAuthor.text;
+
+            LevelTransitionScreen.Instance.ThumbnailObject.SetActive(levelButtons[id].hasThumbnail);
+            if (levelButtons[id].hasThumbnail)
+                LevelTransitionScreen.Instance.Thumbnail.sprite = levelButtons[id].thumbnail;
 
             levelPath = levelButtons[id].levelPath;
             levelHeaderSize = levelButtons[id].headerSize;

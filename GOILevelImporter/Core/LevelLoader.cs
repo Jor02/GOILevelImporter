@@ -113,6 +113,7 @@ namespace GOILevelImporter.Core
 
             //Add modded components
             AddComponents();
+            Menu.LevelTransitionScreen.Instance.FadeIn();
             Time.timeScale = 1;
         }
 

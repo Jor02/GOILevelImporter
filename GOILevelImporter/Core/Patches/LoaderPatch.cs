@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using GOILevelImporter.Core.Menu;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -14,6 +15,7 @@ namespace GOILevelImporter.Core.Patches
         {
             if (___loadFinished && ___safeToClick && !Base.isDefault)
             {
+                LevelTransitionScreen.Instance.FadeOut();
                 __instance.StartCoroutine(LevelLoader.Instance.BeginLoadLevel(Base.levelPath, Base.levelHeaderSize));
             }
 		}

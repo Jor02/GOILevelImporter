@@ -39,5 +39,15 @@ namespace GOILevelImporter.Core.Menu
 
             return levelSelectScreen.AddComponent<LevelSelectScreen>();
         }
+
+        public static LevelTransitionScreen createLevelTransition(Transform parent)
+        {
+            if (embededBundle == null)
+                embededBundle = AssetBundle.LoadFromMemory(Properties.Resources.levelselect);
+
+            GameObject levelTransitionScreen = GameObject.Instantiate(embededBundle.LoadAsset<GameObject>("LevelTransition"));
+
+            return levelTransitionScreen.AddComponent<LevelTransitionScreen>();
+        }
     }
 }
