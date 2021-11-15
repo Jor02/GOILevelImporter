@@ -19,7 +19,7 @@ namespace GOILevelImporter
         public const string GUID = "com.jor02.goilevelimporter";
         public const string NAME = "GOI Level Importer";
         public const string VERSION = "3.0.0";
-        public const string VERSIONPOST = "beta.1";
+        public const string VERSIONPOST = "beta.01";
         
         public const string FULLVERSION = VERSION + "-" + VERSIONPOST;
     }
