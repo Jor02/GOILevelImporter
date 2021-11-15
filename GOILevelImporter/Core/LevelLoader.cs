@@ -118,6 +118,8 @@ namespace GOILevelImporter.Core
             //Add modded components
             if (!Legacy)
                 AddComponents();
+            else
+                LegacyComponents();
 
             Menu.LevelTransitionScreen.Instance.FadeIn();
             Time.timeScale = 1;
@@ -229,6 +231,16 @@ namespace GOILevelImporter.Core
                     ((Components.ComponentBase)addedComponent).StartComponent();
                 }
             }
+        }
+
+        void LegacyComponents()
+        {
+            GameObject pos = GameObject.Find("startPos");
+
+            Debug.LogWarning(pos != null);
+            if (pos != null)
+                pos.AddComponent<Components.PlayerStart>().StartComponent();
+            
         }
         #endregion
 
