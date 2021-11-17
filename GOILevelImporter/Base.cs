@@ -83,7 +83,7 @@ namespace GOILevelImporter
             GOIVersion.overflowMode = TextOverflowModes.Overflow;
             GOIVersion.alignment = TextAlignmentOptions.TopRight;
             GOIVersion.enableAutoSizing = true;
-            GOIVersion.text += "<br>Jor02's Level Mod " + PluginInfo.FULLVERSION;
+            GOIVersion.text += "<br>Level Mod " + PluginInfo.FULLVERSION;
 
             #region Setup Custom Button
             //Create button generator
