@@ -22,7 +22,7 @@
 
 2. Install [Visual Studio](https://visualstudio.microsoft.com/vs/) and download the project *(don't forget to extract it if you're downloading it as a zip)*
 
-3. Go into `BuildVars/getting_over_it_path.txt` *(inside the project)* and replace the contents of that text file with the path to Getting Over It,<br/>
+3. Go inside the project, into the `BuildVars` directory, make a text file called `getting_over_it_path`, and paste the path to Getting Over It inside that file,<br/>
 *Make sure there are no empty spaces around the path!*
 
 4. Make a `Libs` directory at the root of the project and throw in the following things:

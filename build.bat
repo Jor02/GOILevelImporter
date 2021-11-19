@@ -14,7 +14,7 @@ set "newtonsoft_json=%*\Newtonsoft.Json.dll"
 rem -- Copying DLLs and running the game
 copy /Y "%plugin_dll%"      "%goi_plugins%" || call :throw_file_error
 copy /Y "%newtonsoft_json%" "%goi_plugins%" || call :throw_file_error
-"%goi_exec%"
+start "" "%goi_exec%"
 exit /B %errorlevel%
 
 rem -- Error function in case people don't read the Readme
