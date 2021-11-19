@@ -25,7 +25,11 @@
 3. Go into `BuildVars/getting_over_it_path.txt` *(inside the project)* and replace the contents of that text file with the path to Getting Over It,<br/>
 *Make sure there are no empty spaces around the path!*
 
-4. Open the project's `.sln` file in Visual Studio,<br/>
+4. Make a `Libs` directory at the root of the project and throw in the following things:
+    * All the DLLs in `.../Getting Over It/BepInEx/core/`
+    * All the DLLs in `.../Getting Over It/GettingOverIt_Data/Managed/` that have "Unity" at the start of their name
+
+5. Open the project's `.sln` file in Visual Studio,<br/>
 And just like that you can mess around with the project on your own!
 
 ## Third party licenses
