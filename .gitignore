@@ -1,6 +1,6 @@
 ## Repo specific
 /Libs/*
-/BuildVars/getting_over_it_path.txt
+BuildVars/getting_over_it_path.txt
 ##
 
 ## Ignore Visual Studio temporary files, build results, and
