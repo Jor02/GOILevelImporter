@@ -2,7 +2,9 @@
   "profiles": {
     "GOILevelImporter": {
       "commandName": "Executable",
-      "executablePath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Getting Over It Custom Map BepInEx\\GettingOverIt.exe"
+      "executablePath": "$(SolutionDir)build.bat",
+      "commandLineArgs": "$(TargetDir)",
+      "workingDirectory": "$(SolutionDir)"
     }
   }
 }
