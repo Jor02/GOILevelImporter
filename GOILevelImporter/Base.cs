@@ -61,7 +61,7 @@ namespace GOILevelImporter
             {
                 Core.LevelLoader.Instance.Reset();
                 StartCoroutine(SetupMenu());
-            } else if (target.name == "Mian" && mode != LoadSceneMode.Additive && !isDefault) // If we restarted
+            } else if (!Core.LevelLoader.Async && target.name == "Mian" && mode != LoadSceneMode.Additive && !isDefault) // If we restarted
             {
                 StartCoroutine(Core.LevelLoader.Instance.LoadLevel());
             }

@@ -17,6 +17,7 @@ namespace GOILevelImporter.Core
         public static LevelLoader Instance { get; private set; }
         public static bool Playing { get; private set; } = false;
         public static bool Legacy { get; private set; } = false;
+        public static bool Async { get; set; } = false;
         public static string Scene { get; set; }
         public long HeaderSize { get; private set; } = 0;
         public static AssetBundle currectBundle { get; private set; }
@@ -85,9 +86,22 @@ namespace GOILevelImporter.Core
             }
         }
 
+        /// <summary>
+        /// Waits for AsyncOperation to complete then loads the level
+        /// </summary>
+        public void LoadLevelAsync(AsyncOperation loadingOperation) => StartCoroutine(LoadLevelAsync_(loadingOperation));
+        private IEnumerator LoadLevelAsync_(AsyncOperation loadingOperation)
+        {
+            Async = true;
+            while (!loadingOperation.isDone) yield return null;
+            Async = false;
+            StartCoroutine(LoadLevel());
+        }
+
         public IEnumerator LoadLevel()
         {
             yield return new WaitForEndOfFrame();
+            Physics2D.simulationMode = SimulationMode2D.Script;
             Time.timeScale = 0;
 
             foreach (GameObject gameObject in SceneManager.GetActiveScene().GetRootGameObjects())
@@ -123,6 +137,7 @@ namespace GOILevelImporter.Core
 
             Menu.LevelTransitionScreen.Instance.FadeIn();
             Time.timeScale = 1;
+            Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
         }
 
         /// <summary>
