@@ -5,6 +5,9 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
+using GOILevelImporter.Utils;
+using UnityEngine.SceneManagement;
+
 namespace GOILevelImporter.Core.Menu
 {
     class LevelTransitionScreen : MonoBehaviour
@@ -18,9 +21,13 @@ namespace GOILevelImporter.Core.Menu
 
         public CanvasGroup Group { get; private set; }
 
+        private CameraControl cameraControl;
+
         void Awake()
         {
             DontDestroyOnLoad(gameObject);
+
+            SceneManager.sceneLoaded += SceneChange;
 
             Thumbnail = transform.Find("Transition/LevelInfo/Thumbnail/ThumbnailImage").GetComponent<Image>();
             ThumbnailObject = transform.Find("Transition/LevelInfo/Thumbnail").gameObject;
@@ -32,6 +39,21 @@ namespace GOILevelImporter.Core.Menu
             Group.alpha = 0;
 
             Instance = this;
+        }
+
+        private void SceneChange(Scene scene, LoadSceneMode loadSceneMode)
+        {
+            if (scene.name != "Mian") return;
+            cameraControl = FindObjectOfType<CameraControl>();
+        }
+
+        void Update()
+        {
+            if (Group.alpha > 0 && cameraControl != null)
+            {
+                cameraControl.SetPrivateFieldValue<int>("fadeInTimer", 0);
+                cameraControl.SetPrivateFieldValue<float>("alpha", 0);
+            }
         }
 
         public void FadeOut()
