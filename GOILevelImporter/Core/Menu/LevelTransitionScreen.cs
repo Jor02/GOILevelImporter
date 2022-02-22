@@ -51,7 +51,7 @@ namespace GOILevelImporter.Core.Menu
         {
             if (Group.alpha > 0 && cameraControl != null)
             {
-                cameraControl.SetPrivateFieldValue<int>("fadeInTimer", 0);
+                cameraControl.SetPrivateFieldValue("fadeInTimer", 0);
                 cameraControl.SetPrivateFieldValue<float>("alpha", 0);
             }
         }
