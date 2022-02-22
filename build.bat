@@ -9,11 +9,9 @@ set "goi_plugins=%goi_dir%\BepInEx\Plugins"
 set "goi_exec=%goi_dir%\GettingOverIt.exe"
 
 set "plugin_dll=%*\GOILevelImporter.dll"
-set "newtonsoft_json=%*\Newtonsoft.Json.dll"
 
 rem -- Copying DLLs and running the game
 copy /Y "%plugin_dll%"      "%goi_plugins%" || call :throw_file_error
-copy /Y "%newtonsoft_json%" "%goi_plugins%" || call :throw_file_error
 start "GOILevelImporter" "%goi_exec%"
 exit /B %errorlevel%
 
