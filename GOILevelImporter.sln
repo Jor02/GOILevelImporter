@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31424.327
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GOILevelImporter", "GOILevelImporter\GOILevelImporter.csproj", "{7A6C2170-CCEB-4750-9E06-EB7BA7AB2673}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GOILevelImporter", "GOILevelImporter\GOILevelImporter.csproj", "{7A6C2170-CCEB-4750-9E06-EB7BA7AB2673}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
