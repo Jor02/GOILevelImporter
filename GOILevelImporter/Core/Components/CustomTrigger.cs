@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 
 namespace GOILevelImporter.Core.Components
 {
-    class CustomTrigger : ComponentBase
+    class CustomTrigger : MonoBehaviour
     {
         public DetectMode Detect;
         public Trigger TriggerType;
@@ -22,7 +22,7 @@ namespace GOILevelImporter.Core.Components
         public GameObject[] TargetProp;
         public AudioSource source;
 
-        protected override void StartComp()
+        private void Start()
         {
 			if (TriggerType == CustomTrigger.Trigger.Playsound)
 			{
@@ -37,7 +37,6 @@ namespace GOILevelImporter.Core.Components
 
 		private void OnTriggerEnter2D(Collider2D col)
 		{
-			Debug.Log(TriggerType);
 			if ((col.gameObject.layer != 8 && Detect == DetectMode.PlayerOnly) || (col.gameObject.layer == 8 && Detect == DetectMode.PropsOnly))
 			{
 				return;
@@ -97,7 +96,7 @@ namespace GOILevelImporter.Core.Components
 						}
 					}
 					return;
-				case Trigger.Animation: //TODO: Fix animation type not parsing in component JSON (or maybe using newtonsoft.json in unity would work)
+				case Trigger.Animation:
 					if (!string.IsNullOrEmpty(anim))
 					{
 						animation.Play(anim);

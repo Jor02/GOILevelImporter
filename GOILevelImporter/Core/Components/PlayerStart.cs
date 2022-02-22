@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace GOILevelImporter.Core.Components
 {
-    class PlayerStart : ComponentBase
+    class PlayerStart : MonoBehaviour
     {
-        protected override void StartComp()
+        private void Start()
         {
             if (!PlayerPrefs.HasKey("SaveGame0") || !PlayerPrefs.HasKey("SaveGame1"))
             {

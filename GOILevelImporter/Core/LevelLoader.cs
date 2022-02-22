@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Collections;
-using Newtonsoft.Json;
 using System.Reflection;
 using System;
 using GOILevelImporter.Utils;
@@ -176,75 +175,6 @@ namespace GOILevelImporter.Core
                 int metaDataLength = reader.ReadInt32();
 
                 stream.Seek(metaDataLength, SeekOrigin.Current);
-                int levelDataLength = reader.ReadInt32();
-
-                byte[] compressedLevelData = reader.ReadBytes(levelDataLength);
-                byte[] uncompressedLevelData = SevenZip.Compression.LZMA.SevenZipHelper.Decompress(compressedLevelData);
-
-                string levelDataJson = System.Text.Encoding.UTF8.GetString(uncompressedLevelData);
-
-                levelData = JsonConvert.DeserializeObject<LevelSettings>(levelDataJson);
-            }
-
-            foreach (LevelSettings.ScriptedObject targetObject in levelData.objects)
-            {
-                GameObject targetGameObject = GameObject.Find(targetObject.path);
-                if (!targetGameObject) continue;
-
-                foreach (LevelSettings.ObjectComponent component in targetObject.components)
-                {
-                    Type type = Type.GetType(component.typeName);
-                    if (type == null) continue;
-
-                    Component addedComponent = targetGameObject.AddComponent(type);
-
-                    foreach (LevelSettings.Member member in component.members)
-                    {
-                        FieldInfo field;
-                        Type memberType;
-
-                        try
-                        {
-                            field = type.GetField(member.name);
-                            memberType = field.FieldType;
-                        }
-                        catch
-                        {
-                            Debug.LogWarning($"{addedComponent.name} doesn't have field {member.name}");
-                            continue;
-                        }
-
-                        try
-                        {
-                            if (memberType == typeof(int))
-                            {
-                                field.SetValue(addedComponent, int.Parse(member.value));
-                            }
-                            else if (memberType == typeof(float))
-                            {
-                                field.SetValue(addedComponent, float.Parse(member.value));
-                            }
-                            else if (memberType == typeof(string))
-                            {
-                                field.SetValue(addedComponent, member.value);
-                            }
-                            else if (memberType == typeof(bool))
-                            {
-                                field.SetValue(addedComponent, bool.Parse(member.value));
-                            }
-                            else if (memberType.IsEnum)
-                            {
-                                field.SetValue(addedComponent, Enum.Parse(memberType, member.value));
-                            }
-                        }
-                        catch
-                        {
-                            Debug.LogWarning($"Failed to parse member {field.Name} of {addedComponent.name}");
-                        }
-                    }
-
-                    ((Components.ComponentBase)addedComponent).StartComponent();
-                }
             }
         }
 
@@ -254,7 +184,7 @@ namespace GOILevelImporter.Core
 
             Debug.LogWarning(pos != null);
             if (pos != null)
-                pos.AddComponent<Components.PlayerStart>().StartComponent();
+                pos.AddComponent<Components.PlayerStart>();
             
         }
         #endregion
@@ -344,10 +274,7 @@ namespace GOILevelImporter.Core
                             byte[] compressedMetaData = new byte[metaDataLength];
 
                             reader.Read(compressedMetaData, 0, metaDataLength);
-
-                            int levelDataLength = reader.ReadInt32();
-
-                            HeaderSize = stream.Position + levelDataLength;
+                            HeaderSize = stream.Position;
 
                             byte[] decompressedMetaData = SevenZip.Compression.LZMA.SevenZipHelper.Decompress(compressedMetaData);
 
