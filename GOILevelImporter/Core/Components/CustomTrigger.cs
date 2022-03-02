@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 
 namespace GOILevelImporter.Core.Components
 {
-    class CustomTrigger : MonoBehaviour
+    public class CustomTrigger : MonoBehaviour
     {
         public DetectMode Detect;
         public Trigger TriggerType;
