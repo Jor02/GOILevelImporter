@@ -18,16 +18,15 @@
 2. Copy the contents of CustomLeverImporterMod.zip into the `.../Getting Over It/BepInEx/plugins/` directory
 
 ## Building the project
-1. Install BepInEx *(Follow the first step in the `Installation` section)*
+1. [Download BepInEx](https://github.com/BepInEx/BepInEx/releases/latest) and copy everything in the BepInEx zip into the Getting Over It directory. Then run the game once to initialize all the BepInEx stuff.
 
-2. Install [Visual Studio](https://visualstudio.microsoft.com/vs/) and download the project *(don't forget to extract it if you're downloading it as a zip)*
+2. Install [Visual Studio](https://visualstudio.microsoft.com/vs/) with the ".NET Desktop Development" package and download the project *(don't forget to extract it if you're downloading it as a zip)*
 
-3. Go inside the project, into the `BuildVars` directory, make a text file called `getting_over_it_path`, and paste the path to Getting Over It inside that file,<br/>
-*Make sure there are no empty spaces around the path!*
+3. Go inside the project, make a `BuildVars` directory at the root of the project *(same directory as the `.sln` file)*, make a text file called `getting_over_it_path`, and paste the path to the Getting Over It directory into that file *(for most people the GOI directory should be `C:/Program Files (x86)/Steam/steamapps/common/Getting Over It`)*<br/>
 
 4. Make a `Libs` directory at the root of the project and throw in the following things:
-    * All the DLLs in `.../Getting Over It/BepInEx/core/`
-    * All the DLLs in `.../Getting Over It/GettingOverIt_Data/Managed/` that have "Unity" at the start of their name
+    * All the DLL files in `.../Getting Over It/BepInEx/core/`
+    * All the DLL files in `.../Getting Over It/GettingOverIt_Data/Managed/` that have "Unity" at the start of their name, as well as `Assembly-CSharp.dll`.
 
 5. Open the project's `.sln` file in Visual Studio,<br/>
 And just like that you can mess around with the project on your own!
