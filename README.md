@@ -31,5 +31,7 @@
 5. Open the project's `.sln` file in Visual Studio,<br/>
 And just like that you can mess around with the project on your own!
 
+You should also consider using the [Unity Explorer](https://github.com/sinai-dev/UnityExplorer/releases/latest) mod, as it lets you look around and modify the game in real-time *(useful for debugging)*
+
 ## Third party licenses
 > Please check [Third party licenses](./THIRDPARTY.md)
