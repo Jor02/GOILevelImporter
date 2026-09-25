@@ -15,7 +15,7 @@ namespace GOILevelImporter.Core.Patches
     [HarmonyPatch(typeof(CameraControl), "FixedUpdate")]
     class CameraControlPatch
     {
-        static bool Prefix(CameraControl __instance, ref GameObject player, ref Vector3 ___vel)
+        static bool Prefix(CameraControl __instance, ref GameObject player, ref Vector3 ___vel, Camera ___mainCam)
         {
             if (!LevelLoader.Playing || LevelLoader.HasCustomSpline)
             {
@@ -38,7 +38,9 @@ namespace GOILevelImporter.Core.Patches
                 return false;
             }
 
-            var target = new Vector3(player.transform.position.x, player.transform.position.y, -20f);
+            var settings = Base.metadata;
+
+            var target = new Vector3(player.transform.position.x, player.transform.position.y, settings.ZPlane);
 
             // Same perlin-ish wobble the game adds, so the camera never sits
             // perfectly still while the player is moving.
@@ -48,7 +50,58 @@ namespace GOILevelImporter.Core.Patches
             ___vel += 60f * delta * Time.fixedDeltaTime - 0.12f * ___vel;
             __instance.transform.position += ___vel * Time.fixedDeltaTime;
 
+            ApplyClipPlanes(___mainCam, settings.FarPlane, settings.BGFarPlane);
+            ApplyPerspective(___mainCam, settings.CameraMode);
+
             return false;
+        }
+
+        private static void ApplyClipPlanes(Camera mainCam, float farPlane, float bgFarPlane)
+        {
+            if (mainCam != null)
+            {
+                mainCam.farClipPlane = farPlane;
+            }
+
+            var backgroundCam = GetBackgroundCam(mainCam);
+            if (backgroundCam != null)
+            {
+                backgroundCam.farClipPlane = bgFarPlane;
+            }
+        }
+
+        /// <summary>
+        /// cam=1 puts the main camera in perspective and drops the background camera's fov so the sky lines up.
+        /// </summary>
+        private static void ApplyPerspective(Camera mainCam, int cameraMode)
+        {
+            if (mainCam == null || cameraMode != 1)
+            {
+                return;
+            }
+
+            mainCam.orthographic = false;
+
+            var backgroundCam = GetBackgroundCam(mainCam);
+            if (backgroundCam != null)
+            {
+                backgroundCam.fieldOfView = 60f;
+                backgroundCam.transform.localPosition = Vector3.zero;
+            }
+        }
+
+        /// <summary>
+        /// Find the background camera through the transform hierarchy.
+        /// </summary>
+        private static Camera GetBackgroundCam(Camera mainCam)
+        {
+            if (mainCam == null)
+            {
+                return null;
+            }
+
+            var background = mainCam.transform.Find("BGCamera");
+            return background != null ? background.GetComponent<Camera>() : null;
         }
     }
 }
