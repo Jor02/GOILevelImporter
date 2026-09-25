@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace GOILevelImporter.Core.Components
+namespace GOILevelImporter.Components
 {
     class PlayerStart : MonoBehaviour
     {

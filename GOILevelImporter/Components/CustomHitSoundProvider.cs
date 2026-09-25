@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace GOILevelImporter.Core.Components
+namespace GOILevelImporter.Components
 {
 	public class CustomHitSoundProvider : MonoBehaviour
 	{

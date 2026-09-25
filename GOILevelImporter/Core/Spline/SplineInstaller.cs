@@ -1,6 +1,6 @@
 using System;
 using FluffyUnderware.Curvy;
-using GOILevelImporter.Core.Components;
+using GOILevelImporter.Components;
 using GOILevelImporter.Utils;
 using UnityEngine;
 

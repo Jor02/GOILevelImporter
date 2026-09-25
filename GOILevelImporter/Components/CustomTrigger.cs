@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
-namespace GOILevelImporter.Core.Components
+namespace GOILevelImporter.Components
 {
     public class CustomTrigger : MonoBehaviour
     {

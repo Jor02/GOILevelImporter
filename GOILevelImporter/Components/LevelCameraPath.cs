@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace GOILevelImporter.Core.Components
+namespace GOILevelImporter.Components
 {
     /// <summary>
     /// Camera path authored by a level creator. Only plain UnityEngine types are

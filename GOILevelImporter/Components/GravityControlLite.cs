@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace GOILevelImporter.Core.Components
+namespace GOILevelImporter.Components
 {
 	public class GravityControlLite : MonoBehaviour
 	{
