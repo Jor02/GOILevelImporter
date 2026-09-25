@@ -20,4 +20,16 @@ namespace GOILevelImporter.Core.Patches
             }
 		}
     }
+
+    [HarmonyPatch(typeof(Loader), "StartGame")]
+    class LoaderStartGamePatch
+    {
+        static void Prefix()
+        {
+            //A fresh playthrough starts at the level's entry scene. Without this,
+            //a sub-scene saved by a previous run's SwitchScene trigger would be
+            //resumed into.
+            Base.ClearPendingScene();
+        }
+    }
 }

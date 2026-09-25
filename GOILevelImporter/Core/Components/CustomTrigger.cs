@@ -37,6 +37,9 @@ namespace GOILevelImporter.Core.Components
 
 		private void OnTriggerEnter2D(Collider2D col)
 		{
+			//Triggers in the scene being torn down can fire while a level loads.
+			if (LevelLoader.Loading) return;
+
 			if ((col.gameObject.layer != 8 && Detect == DetectMode.PlayerOnly) || (col.gameObject.layer == 8 && Detect == DetectMode.PropsOnly))
 			{
 				return;
@@ -48,12 +51,7 @@ namespace GOILevelImporter.Core.Components
 			switch (TriggerType)
 			{
 				case Trigger.Reset:
-					PlayerPrefs.DeleteKey("NumSaves");
-					PlayerPrefs.DeleteKey("SaveGame0");
-					PlayerPrefs.DeleteKey("SaveGame1");
-					PlayerPrefs.DeleteKey("targetScene");
-					PlayerPrefs.Save();
-					SceneManager.LoadScene("Mian");
+					LevelLoader.Instance.Reload(false);
 					return;
 				case Trigger.Teleport:
 					ComponentHelper.Instance.Teleport(Destination);
@@ -73,7 +71,7 @@ namespace GOILevelImporter.Core.Components
 						PlayerPrefs.DeleteKey("NumSaves");
 						PlayerPrefs.DeleteKey("SaveGame0");
 						PlayerPrefs.DeleteKey("SaveGame1");
-						PlayerPrefs.DeleteKey("targetScene");
+						Base.ClearPendingScene();
 						int num = PlayerPrefs.GetInt("NumWins");
 						num++;
 						PlayerPrefs.SetInt("NumWins", num);
@@ -108,31 +106,30 @@ namespace GOILevelImporter.Core.Components
 					TriggerEvent.Invoke();
 					return;
 				case Trigger.SwitchScene:
-					PlayerPrefs.DeleteKey("NumSaves");
-					PlayerPrefs.DeleteKey("SaveGame0");
-					PlayerPrefs.DeleteKey("SaveGame1");
-					PlayerPrefs.Save();
-
+					//Save the sub-scene so the reload below resumes in it, then
+					//restart the level through LevelLoader so Async is set and
+					//OnSceneLoaded doesn't start a second, parallel load.
 					Base.configTargetScene.SetSerializedValue(anim);
 					Base.configTargetSceneLevel.SetSerializedValue(LevelLoader.currentBundlePath);
-					LevelLoader.Scene = anim;
 
-					SceneManager.LoadScene("Mian");
+					LevelLoader.Instance.Reload(true);
 					return;
 				default:
 					return;
 			}
 		}
 
+		//These values are a serialization contract. Old bundles store the enum as an
+		//int, so the numbers must not change even if the order does.
 		public enum Trigger
         {
             Reset,
             Teleport,
             Finish,
             Playsound,
-            Animation,
-            Event,
-            SwitchScene
+            Animation = 4,
+            Event = 5,
+            SwitchScene = 6
         }
 
         public enum DetectMode

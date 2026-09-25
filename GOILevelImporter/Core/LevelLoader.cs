@@ -17,7 +17,7 @@ namespace GOILevelImporter.Core
         public static bool Playing { get; private set; } = false;
         public static bool Legacy { get; private set; } = false;
         public static bool Async { get; set; } = false;
-        public static string Scene { get; set; }
+        public static bool Loading { get; set; } = false;
         public long HeaderSize { get; private set; } = 0;
         public static AssetBundle currectBundle { get; private set; }
         public static string currentBundlePath { get; private set; }
@@ -65,6 +65,7 @@ namespace GOILevelImporter.Core
             if (currectBundle)
                 currectBundle.Unload(true);
             Playing = false;
+            Loading = false;
         }
 
         #region Loading
@@ -97,8 +98,36 @@ namespace GOILevelImporter.Core
             StartCoroutine(LoadLevel());
         }
 
+        /// <summary>
+        /// Restarts the current level, optionally keeping the sub-scene a
+        /// SwitchScene trigger moved us to instead of going back to the entry scene.
+        /// </summary>
+        /// <param name="keepCurrentScene">True to resume in the saved sub-scene</param>
+        public void Reload(bool keepCurrentScene = false)
+        {
+            if (Loading) return;
+
+            if (!keepCurrentScene)
+            {
+                Base.ClearPendingScene();
+            }
+
+            Menu.LevelTransitionScreen.Instance.FadeOut();
+            Loading = true;
+            Time.timeScale = 0;
+            Physics2D.simulationMode = SimulationMode2D.Script;
+
+            PlayerPrefs.DeleteKey("NumSaves");
+            PlayerPrefs.DeleteKey("SaveGame0");
+            PlayerPrefs.DeleteKey("SaveGame1");
+            PlayerPrefs.Save();
+
+            LoadLevelAsync(SceneManager.LoadSceneAsync("Mian"));
+        }
+
         public IEnumerator LoadLevel()
         {
+            Loading = true;
             yield return new WaitForEndOfFrame();
             Physics2D.simulationMode = SimulationMode2D.Script;
             Time.timeScale = 0;
@@ -122,21 +151,24 @@ namespace GOILevelImporter.Core
             //Fixes error in PoseControl
             Resources.FindObjectsOfTypeAll<PoseControl>()[0].SetPrivateFieldValue("interestingItems", new Transform[0]);
 
-            AsyncOperation asyncLoad =  SceneManager.LoadSceneAsync(currectBundle.GetAllScenePaths()[0], LoadSceneMode.Additive);
+            //A SwitchScene trigger may have moved us to a sub-scene of this level.
+            //Falls back to the bundle's entry scene on the first load.
+            string targetScene = Base.GetPendingScene(currentBundlePath);
+            string scenePath = string.IsNullOrWhiteSpace(targetScene) ? currectBundle.GetAllScenePaths()[0] : targetScene;
+
+            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Additive);
 
             while (!asyncLoad.isDone)
                 yield return null;
             yield return new WaitForEndOfFrame();
 
-            //Add modded components
-            if (!Legacy)
-                AddComponents();
-            else
-                LegacyComponents();
+            //Bundles built by older versions reference the old mod components, we have to replace these.
+            if (Legacy) LegacyComponents();
 
             Menu.LevelTransitionScreen.Instance.FadeIn();
             Time.timeScale = 1;
             Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
+            Loading = false;
         }
 
         /// <summary>
@@ -161,31 +193,12 @@ namespace GOILevelImporter.Core
             }
         }
 
-        /// <summary>
-        /// Adds all modded components back
-        /// </summary>
-        void AddComponents()
-        {
-            LevelSettings levelData;
-
-            using (FileStream stream = new FileStream(currentBundlePath, FileMode.Open))
-            using (BinaryReader reader = new BinaryReader(stream))
-            {
-                stream.Seek(header.Length, SeekOrigin.Current);
-                int metaDataLength = reader.ReadInt32();
-
-                stream.Seek(metaDataLength, SeekOrigin.Current);
-            }
-        }
-
         void LegacyComponents()
         {
             GameObject pos = GameObject.Find("startPos");
 
-            Debug.LogWarning(pos != null);
             if (pos != null)
                 pos.AddComponent<Components.PlayerStart>();
-            
         }
         #endregion
 

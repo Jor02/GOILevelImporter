@@ -32,18 +32,18 @@ namespace GOILevelImporter
                 "The current selected level"
             );
 
-            configTargetScene = Config.Bind(
+            configTargetSceneLevel = Config.Bind(
                 "General",
                 "targetSceneLevel",
                 string.Empty,
-                "The current scene level"
+                "Path of the level whose target scene is saved, so a resumed sub-scene is only used for the level that set it"
             );
 
             configTargetScene = Config.Bind(
                 "General",
                 "targetScene",
                 string.Empty,
-                "The current scene"
+                "The scene to load after the level entry scene, set by a SwitchScene trigger"
             );
             #endregion
 
@@ -156,6 +156,22 @@ namespace GOILevelImporter
         public static bool legacy { get; private set; }
         public static ulong levelHeaderSize { get; private set; }
         public static bool isDefault { get; private set; }
+
+        public static string GetPendingScene(string bundlePath)
+        {
+            if (string.IsNullOrWhiteSpace(configTargetScene.Value) || configTargetSceneLevel.Value != bundlePath)
+            {
+                return string.Empty;
+            }
+            return configTargetScene.Value;
+        }
+
+        public static void ClearPendingScene()
+        {
+            configTargetScene.SetSerializedValue(string.Empty);
+            configTargetSceneLevel.SetSerializedValue(string.Empty);
+        }
+
         private void UpdateSelectedLevel(int id)
         {
             foreach (LevelButton b in levelButtons)

@@ -16,19 +16,9 @@ namespace GOILevelImporter.Core.Patches
             if (LevelLoader.Async) return false;
             if (!Base.isDefault && ___numWins > 0 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && Input.GetKey(KeyCode.R))
             {
-                Time.timeScale = 0;
-                Physics2D.simulationMode = SimulationMode2D.Script;
-
-                LevelLoader.Async = true;
-                LevelTransitionScreen.Instance.FadeOut();
-
-                PlayerPrefs.DeleteKey("NumSaves");
-                PlayerPrefs.DeleteKey("SaveGame0");
-                PlayerPrefs.DeleteKey("SaveGame1");
-                PlayerPrefs.Save();
-
-                LevelLoader.Instance.LoadLevelAsync(SceneManager.LoadSceneAsync("Mian"));
-
+                //Reload(false) clears any sub-scene a SwitchScene trigger saved
+                //earlier in the run, so a reset returns to the entry scene.
+                LevelLoader.Instance.Reload(false);
                 return false;
             }
             return true;
