@@ -18,6 +18,7 @@ namespace GOILevelImporter.Core
         public static bool Legacy { get; private set; } = false;
         public static bool Async { get; set; } = false;
         public static bool Loading { get; set; } = false;
+        public static bool HasCustomSpline { get; set; } = false;
         public long HeaderSize { get; private set; } = 0;
         public static AssetBundle currectBundle { get; private set; }
         public static string currentBundlePath { get; private set; }
@@ -66,6 +67,7 @@ namespace GOILevelImporter.Core
                 currectBundle.Unload(true);
             Playing = false;
             Loading = false;
+            HasCustomSpline = false;
         }
 
         #region Loading
@@ -164,6 +166,11 @@ namespace GOILevelImporter.Core
 
             //Bundles built by older versions reference the old mod components, we have to replace these.
             if (Legacy) LegacyComponents();
+
+            //Levels can bring their own camera path. When one is present the game
+            //scripts follow it and the fallback patches stand down.
+            HasCustomSpline = Spline.SplineInstaller.TryInstall(
+                UnityEngine.Object.FindObjectOfType<Components.LevelCameraPath>());
 
             Menu.LevelTransitionScreen.Instance.FadeIn();
             Time.timeScale = 1;
