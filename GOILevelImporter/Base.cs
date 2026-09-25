@@ -125,7 +125,8 @@ namespace GOILevelImporter
                 false,
                 AssetImporter.embededBundle.LoadAsset<Texture2D>("DefaultThumb"),
                 UpdateSelectedLevel,
-                0
+                0,
+                new Core.LevelMetadata("Default Map", "Bennett Foddy", "Don't load any custom maps.", false, false, null, 0)
             );
 
             Core.LevelLoader.Response[] responses = Core.LevelLoader.Instance.FetchLevels();
@@ -143,7 +144,7 @@ namespace GOILevelImporter
                 Core.LevelLoader.Response response = succesfulResponses[i];
 
                 //Create button
-                levelButtons[i+1] = Instantiate(levelScreen.templateLevelButton, levelScreen.content).GetComponent<LevelButton>().Init(response.LevelPath, response.LevelName, response.Author, response.Description, i+1, response.Legacy, response.Thumbnail, UpdateSelectedLevel, response.HeaderSize);
+                levelButtons[i+1] = Instantiate(levelScreen.templateLevelButton, levelScreen.content).GetComponent<LevelButton>().Init(response.LevelPath, response.LevelName, response.Author, response.Description, i+1, response.Legacy, response.Thumbnail, UpdateSelectedLevel, response.HeaderSize, response.Metadata);
 
                 if (succesfulResponses[i].LevelPath == configSelectedLevel.GetSerializedValue()) selectedMap = i+1;
             }
@@ -156,6 +157,12 @@ namespace GOILevelImporter
         public static bool legacy { get; private set; }
         public static ulong levelHeaderSize { get; private set; }
         public static bool isDefault { get; private set; }
+
+        /// <summary>
+        /// Settings of the level currently selected in the menu. Read by the
+        /// loader and the camera patches.
+        /// </summary>
+        public static Core.LevelMetadata metadata { get; private set; }
 
         public static string GetPendingScene(string bundlePath)
         {
@@ -198,6 +205,7 @@ namespace GOILevelImporter
 
             levelPath = curButton.levelPath;
             levelHeaderSize = curButton.headerSize;
+            metadata = curButton.metadata;
 
             configSelectedLevel.SetSerializedValue(curButton.levelPath);
 

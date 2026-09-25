@@ -20,8 +20,9 @@ namespace GOILevelImporter.Core.Menu
         public bool hasThumbnail;
         public Sprite thumbnail;
         public Image background;
+        public Core.LevelMetadata metadata;
 
-        public LevelButton Init(string levelPath, string levelName, string author, string description, int id, bool legacy, Texture2D thumbnail, Action<int> onClickEvent, long headerSize)
+        public LevelButton Init(string levelPath, string levelName, string author, string description, int id, bool legacy, Texture2D thumbnail, Action<int> onClickEvent, long headerSize, Core.LevelMetadata metadata)
         {
             transform.Find("TextArea").GetChild(0).GetComponent<TextMeshProUGUI>().text = levelName;
 
@@ -43,6 +44,7 @@ namespace GOILevelImporter.Core.Menu
             this.author = author;
             this.description = description;
             this.headerSize = (ulong)headerSize;
+            this.metadata = metadata;
             background = GetComponent<Image>();
 
             Button button = GetComponent<Button>();

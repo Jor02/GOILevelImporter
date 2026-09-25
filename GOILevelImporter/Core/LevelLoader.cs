@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Globalization;
+using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -134,11 +135,16 @@ namespace GOILevelImporter.Core
             Physics2D.simulationMode = SimulationMode2D.Script;
             Time.timeScale = 0;
 
-            foreach (GameObject gameObject in SceneManager.GetActiveScene().GetRootGameObjects())
+            var settings = Base.metadata;
+
+            if (settings.ReplacementMap)
             {
-                if (!requiredGameObject(gameObject))
+                foreach (GameObject gameObject in SceneManager.GetActiveScene().GetRootGameObjects())
                 {
-                    Destroy(gameObject);
+                    if (!requiredGameObject(gameObject))
+                    {
+                        Destroy(gameObject);
+                    }
                 }
             }
 
@@ -149,6 +155,50 @@ namespace GOILevelImporter.Core
             GameObject bgCam = GameObject.Find("/Main Camera/BGCamera");
             Destroy(bgCam.GetComponent<FogControl>());
             Destroy(bgCam.GetComponent<FogVolumeRenderer>());
+
+            if (settings.ReplaceSky)
+            {
+                Destroy(GameObject.Find("CloudSystems"));
+                Destroy(GameObject.Find("SkySphere"));
+
+                var sky = bgCam.transform.Find("Sky");
+                if (sky != null) Destroy(sky.gameObject);
+
+                var starnest = bgCam.transform.Find("Starnest");
+                if (starnest != null) Destroy(starnest.gameObject);
+
+                var bgCamera = bgCam.GetComponent<Camera>();
+                bgCamera.clearFlags = CameraClearFlags.Skybox;
+                bgCamera.backgroundColor = Color.black;
+            }
+            else
+            {
+                //Without a replacement sky the background camera would draw nothing behind the level.
+                bgCam.GetComponent<Camera>().clearFlags = CameraClearFlags.SolidColor;
+            }
+
+            if (settings.HideShadow)
+            {
+                var shadow = GameObject.Find("/Player/Hub/Slider/Handle/PoleMiddle/climbinghammer_remap/RetopoGroup1/Shadow");
+                if (shadow != null) shadow.SetActive(false);
+            }
+
+            if (settings.FixHammerMaterial)
+            {
+                var hammerMesh = GameObject.Find("/Player/handle/Mesh");
+                if (hammerMesh != null)
+                {
+                    var renderer = hammerMesh.GetComponent<SkinnedMeshRenderer>();
+                    if (renderer != null) renderer.material.shader = Shader.Find("Standard");
+                }
+            }
+
+            if (settings.ReplaceLighting)
+            {
+                ApplyLighting();
+            }
+
+            ApplyFog(settings.Fog);
 
             //Fixes error in PoseControl
             Resources.FindObjectsOfTypeAll<PoseControl>()[0].SetPrivateFieldValue("interestingItems", new Transform[0]);
@@ -177,6 +227,57 @@ namespace GOILevelImporter.Core
             Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
             Loading = false;
         }
+
+        /// <summary>
+        /// Flattens the ambient lighting. Levels that build their own lighting would otherwise not look very good.
+        /// </summary>
+        private static void ApplyLighting()
+        {
+            RenderSettings.ambientEquatorColor = new Color(0.3f, 0.3f, 0.3f);
+            RenderSettings.ambientGroundColor = new Color(0.5f, 0.5f, 0.5f);
+            RenderSettings.ambientLight = Color.white;
+            RenderSettings.ambientSkyColor = Color.black;
+        }
+
+        /// <summary>
+        /// Applies a level's fog color. The value is hex without a leading #,
+        /// optionally followed by two more digits for density. Anything that
+        /// fails to parse leaves the fog off entirely.
+        /// </summary>
+        private static void ApplyFog(string fog)
+        {
+            RenderSettings.fog = false;
+
+            if (string.IsNullOrWhiteSpace(fog))
+            {
+                return;
+            }
+
+            try
+            {
+                string hex = fog.TrimStart('#');
+
+                int r = int.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
+                int g = int.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
+                int b = int.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
+
+                float density = 0.013f;
+                if (hex.Length > 6)
+                {
+                    density = int.Parse(hex.Substring(6, 2), NumberStyles.HexNumber) / 5100f;
+                }
+
+                RenderSettings.fogColor = new Color(r / 255f, g / 255f, b / 255f, 1f);
+                RenderSettings.fogDensity = density;
+                RenderSettings.fog = true;
+            }
+            catch (Exception)
+            {
+                //A malformed value should just mean no fog, not a failed level load.
+                RenderSettings.fog = false;
+            }
+        }
+
 
         /// <summary>
         /// Checks is gameobject is required for the game to work
@@ -261,6 +362,8 @@ namespace GOILevelImporter.Core
                         #region Legacy Map
                         string levelName = Path.GetFileNameWithoutExtension(path);
                         string author = string.Empty;
+                        string description = levelName + " (Legacy Mode)";
+                        var props = new Dictionary<string, string>();
 
                         if (File.Exists(Path.ChangeExtension(path, "txt")) || File.Exists(Path.ChangeExtension(path, "mdata")))
                         {
@@ -268,13 +371,22 @@ namespace GOILevelImporter.Core
 
                             string[] LevelData = File.ReadAllLines(Path.ChangeExtension(path, txtExtension ? "txt" : "mdata"));
 
-                            Dictionary<string, string> dictionary = new Dictionary<string, string>();
-                            dictionary = (from l in LevelData select l.Split('=')).ToDictionary((string[] s) => s[0].Trim(), (string[] s) => s[1].Trim().ToLower());
+                            foreach (string line in LevelData)
+                            {
+                                //A line without an = is malformed. Skipping it keeps one
+                                //bad line from taking the whole level down.
+                                string[] pair = line.Split('=');
+                                if (pair.Length < 2) continue;
 
-                            if (dictionary.ContainsKey("credit")) author = dictionary["credit"];
+                                props[pair[0].Trim()] = pair[1].Trim();
+                            }
                         }
 
-                        metadata = new LevelMetadata(levelName, author, levelName + " (Legacy Mode)", true, false, null, 0);
+                        //Legacy sidecars use lower case names for the same fields.
+                        if (props.TryGetValue("credit", out var credit)) author = credit;
+                        if (props.TryGetValue("description", out var legacyDescription)) description = legacyDescription;
+
+                        metadata = new LevelMetadata(levelName, author, description, true, false, null, 0, props);
                         #endregion
                     }
                     else if (path.EndsWith(".glf"))
@@ -301,20 +413,37 @@ namespace GOILevelImporter.Core
                             using (MemoryStream memStream = new MemoryStream(decompressedMetaData))
                             using (BinaryReader memReader = new BinaryReader(memStream))
                             {
-                                string LevelName = memReader.ReadString();
-                                string Author = memReader.ReadString();
-                                string Description = memReader.ReadString();
-                                bool hasThumbnail = memReader.ReadBoolean();
-                                byte ThumbnailFormat = memReader.ReadByte();
-                                byte[] Thumbnail = memReader.ReadBytes((int)(memStream.Length - memStream.Position));
-                                metadata = new LevelMetadata(LevelName, Author, Description, false, hasThumbnail, Thumbnail, ThumbnailFormat);
+                                var props = new Dictionary<string, string>();
+
+                                int propertyCount = memReader.ReadInt32();
+                                for (int i = 0; i < propertyCount; i++)
+                                {
+                                    string key = memReader.ReadString();
+                                    string value = memReader.ReadString();
+                                    props[key] = value;
+                                }
+
+                                string LevelName = props.TryGetValue("LevelName", out var n) ? n : "Untitled";
+                                string Author = props.TryGetValue("Author", out var a) ? a : "Unknown";
+                                string Description = props.TryGetValue("Description", out var d) ? d : "";
+                                bool hasThumbnail = props.TryGetValue("HasThumbnail", out var ht) && bool.TryParse(ht, out var hasThumb) && hasThumb;
+                                byte ThumbnailFormat = props.TryGetValue("ThumbnailFormat", out var tf) && byte.TryParse(tf, out var format) ? format : (byte)0;
+
+                                //The thumbnail is the last thing in the stream, so whatever is left after the properties is the image.
+                                byte[] Thumbnail = new byte[0];
+                                if (hasThumbnail && memStream.Position < memStream.Length)
+                                {
+                                    Thumbnail = memReader.ReadBytes((int)(memStream.Length - memStream.Position));
+                                }
+
+                                metadata = new LevelMetadata(LevelName, Author, Description, false, hasThumbnail, Thumbnail, ThumbnailFormat, props);
                             }
                         }
                         #endregion
                     }
                     else continue;
 
-                    responses.Add(new Response(Response.ResponseType.succes, metadata.LegacyMap, path, metadata.LevelName, metadata.Author, metadata.Description, metadata.GetThumbnail(), HeaderSize));
+                    responses.Add(new Response(Response.ResponseType.succes, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), HeaderSize));
                     continue;
                 }
             } else
@@ -343,6 +472,7 @@ namespace GOILevelImporter.Core
             public string LevelPath;
             public bool Legacy;
             public Texture2D Thumbnail;
+            public LevelMetadata Metadata;
 
             public Response(ResponseType message)
             {
@@ -354,15 +484,17 @@ namespace GOILevelImporter.Core
                 Legacy = false;
                 Thumbnail = null;
                 HeaderSize = 0;
+                Metadata = default;
             }
 
-            public Response(ResponseType message, bool legacy, string levelPath, string levelName, string author, string description, Texture2D thumbnail, long headerSize)
+            public Response(ResponseType message, bool legacy, string levelPath, LevelMetadata metadata, Texture2D thumbnail, long headerSize)
             {
-                Message = message;   
+                Message = message;
 
-                LevelName = levelName;
-                Author = author;
-                Description = description;
+                LevelName = metadata.LevelName;
+                Author = metadata.Author;
+                Description = metadata.Description;
+                Metadata = metadata;
 
                 LevelPath = levelPath;
                 Legacy = legacy;
