@@ -1,0 +1,37 @@
+<Project>
+
+  <!-- Optional local overrides. -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.GOI.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.GOI.props')" />
+
+  <PropertyGroup>
+    <GameExe Condition="'$(GameExe)' == ''">GettingOverIt.exe</GameExe>
+    <DeployPluginOnBuild Condition="'$(DeployPluginOnBuild)' == ''">true</DeployPluginOnBuild>
+    <StartGameOnRun Condition="'$(StartGameOnRun)' == ''">true</StartGameOnRun>
+  </PropertyGroup>
+
+  <!-- Windows only registry based check -->
+  <PropertyGroup>
+    <_GameDirectoryAutoDetected Condition="'$(GameDirectory)' == ''">true</_GameDirectoryAutoDetected>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT' and '$(_GameDirectoryAutoDetected)' == 'true'">
+    <GameDirectory Condition="!Exists('$(GameDirectory)')">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 240720', 'InstallLocation', null, RegistryView.Registry64, RegistryView.Registry32))</GameDirectory>
+
+    <_SteamLibraryPath>$([MSBuild]::GetRegistryValueFromView('HKEY_CURRENT_USER\SOFTWARE\Valve\Steam', 'SteamPath', null, RegistryView.Registry32))</_SteamLibraryPath>
+    <GameDirectory Condition="!Exists('$(GameDirectory)') and '$(_SteamLibraryPath)' != ''">$(_SteamLibraryPath)\steamapps\common\Getting Over It</GameDirectory>
+
+    <GameDirectory Condition="!Exists('$(GameDirectory)')">C:\Program Files (x86)\Steam\steamapps\common\Getting Over It</GameDirectory>
+    <GameDirectory Condition="!Exists('$(GameDirectory)')">C:\Program Files\Steam\steamapps\common\Getting Over It</GameDirectory>
+
+    <GameDirectory Condition="'$(GameDirectory)' != '' and !Exists('$(GameDirectory)')"></GameDirectory>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GameDirectory)' != ''">
+    <GameDirectory>$([MSBuild]::NormalizeDirectory($(GameDirectory)))</GameDirectory>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GameManagedDirectory Condition="'$(GameManagedDirectory)' == '' and '$(GameDirectory)' != ''">$([MSBuild]::NormalizeDirectory($(GameDirectory), GettingOverIt_Data, Managed))</GameManagedDirectory>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,32 @@
+<Project>
+
+  <!-- Optional local overrides. -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.GOI.targets" Condition="Exists('$(MSBuildThisFileDirectory)Directory.GOI.targets')" />
+
+  <PropertyGroup>
+    <GameExePath Condition="'$(GameExePath)' == '' and '$(GameDirectory)' != ''">$([MSBuild]::NormalizePath($(GameDirectory), $(GameExe)))</GameExePath>
+    <BepInExDirectory Condition="'$(BepInExDirectory)' == '' and '$(GameDirectory)' != ''">$([MSBuild]::NormalizeDirectory($(GameDirectory), BepInEx))</BepInExDirectory>
+    <PluginsDirectory Condition="'$(PluginsDirectory)' == '' and '$(BepInExDirectory)' != ''">$([MSBuild]::NormalizeDirectory($(BepInExDirectory), plugins))</PluginsDirectory>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsGOIPluginProject)' == 'true' and '$(StartGameOnRun)' == 'true' and Exists('$(GameExePath)')">
+    <StartAction>Program</StartAction>
+    <StartProgram>$(GameExePath)</StartProgram>
+    <StartWorkingDirectory>$(GameDirectory)</StartWorkingDirectory>
+  </PropertyGroup>
+
+  <Target Name="DeployPluginToBepInEx"
+          AfterTargets="Build"
+          Condition="'$(IsGOIPluginProject)' == 'true' and '$(DeployPluginOnBuild)' == 'true'">
+    <Warning Condition="'$(PluginsDirectory)' == '' or !Exists('$(PluginsDirectory)')"
+             Text="GOILevelImporter was not deployed: no plugins folder at '$(PluginsDirectory)'. Set GameDirectory in Directory.GOI.props next to Directory.Build.props, or install BepInEx." />
+    <Copy SourceFiles="$(TargetPath)"
+          DestinationFolder="$(PluginsDirectory)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(TargetPath)') and Exists('$(PluginsDirectory)')" />
+    <Message Importance="high"
+             Text="Deployed $(TargetFileName) to $(PluginsDirectory)"
+             Condition="Exists('$(TargetPath)') and Exists('$(PluginsDirectory)')" />
+  </Target>
+
+</Project>
