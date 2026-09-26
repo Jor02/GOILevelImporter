@@ -14,10 +14,10 @@ namespace GOILevelImporter.Core.Patches
         static bool Prefix(ref int ___numWins)
         {
             if (LevelLoader.Async) return false;
-            if (!Base.isDefault && ___numWins > 0 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && Input.GetKey(KeyCode.R))
+            if (!LevelSelectionState.IsDefault && ___numWins > 0 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && Input.GetKey(KeyCode.R))
             {
-                //Reload(false) clears any sub-scene a SwitchScene trigger saved
-                //earlier in the run, so a reset returns to the entry scene.
+                // Reload(false) clears any sub-scene a SwitchScene trigger saved
+                // earlier in the run, so a reset returns to the entry scene.
                 LevelLoader.Instance.Reload(false);
                 return false;
             }

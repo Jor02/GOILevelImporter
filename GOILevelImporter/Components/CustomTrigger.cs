@@ -72,7 +72,7 @@ namespace GOILevelImporter.Components
 						PlayerPrefs.DeleteKey("NumSaves");
 						PlayerPrefs.DeleteKey("SaveGame0");
 						PlayerPrefs.DeleteKey("SaveGame1");
-						Base.ClearPendingScene();
+						LevelSelectionState.ClearPendingScene();
 						int num = PlayerPrefs.GetInt("NumWins");
 						num++;
 						PlayerPrefs.SetInt("NumWins", num);
@@ -107,11 +107,10 @@ namespace GOILevelImporter.Components
 					TriggerEvent.Invoke();
 					return;
 				case Trigger.SwitchScene:
-					//Save the sub-scene so the reload below resumes in it, then
-					//restart the level through LevelLoader so Async is set and
-					//OnSceneLoaded doesn't start a second, parallel load.
-					Base.configTargetScene.SetSerializedValue(anim);
-					Base.configTargetSceneLevel.SetSerializedValue(LevelLoader.currentBundlePath);
+					// Save the sub-scene so the reload below resumes in it, then
+					// restart the level through LevelLoader so Async is set and
+					// OnSceneLoaded doesn't start a second, parallel load.
+					LevelSelectionState.SetPendingScene(anim, LevelLoader.currentBundlePath);
 
 					LevelLoader.Instance.Reload(true);
 					return;

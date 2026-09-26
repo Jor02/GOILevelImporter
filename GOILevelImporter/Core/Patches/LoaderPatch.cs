@@ -13,10 +13,10 @@ namespace GOILevelImporter.Core.Patches
     {
         static void Prefix(ref bool ___loadFinished, ref bool ___safeToClick)
         {
-            if (___loadFinished && ___safeToClick && !Base.isDefault)
+            if (___loadFinished && ___safeToClick && !LevelSelectionState.IsDefault)
             {
                 LevelTransitionScreen.Instance.FadeOut();
-                LevelLoader.Instance.BeginLoadLevel(Base.levelPath, Base.legacy, Base.levelHeaderSize);
+                LevelLoader.Instance.BeginLoadLevel(LevelSelectionState.LevelPath, LevelSelectionState.Legacy, LevelSelectionState.LevelHeaderSize);
             }
 		}
     }
@@ -26,10 +26,7 @@ namespace GOILevelImporter.Core.Patches
     {
         static void Prefix()
         {
-            //A fresh playthrough starts at the level's entry scene. Without this,
-            //a sub-scene saved by a previous run's SwitchScene trigger would be
-            //resumed into.
-            Base.ClearPendingScene();
+            LevelSelectionState.ClearPendingScene();
         }
     }
 }

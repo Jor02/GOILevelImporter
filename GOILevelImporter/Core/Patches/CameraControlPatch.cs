@@ -40,7 +40,7 @@ namespace GOILevelImporter.Core.Patches
                 return false;
             }
 
-            var settings = Base.metadata;
+            var settings = LevelSelectionState.Metadata;
 
             var target = new Vector3(player.transform.position.x, player.transform.position.y, settings.ZPlane);
 

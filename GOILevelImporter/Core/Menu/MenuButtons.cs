@@ -10,23 +10,16 @@ namespace GOILevelImporter.Core.Menu
     class MenuButtons : MonoBehaviour
     {
         private GameObject template { get; set; }
-        private Transform menu { get; set; }
 
-        public void Init(Transform Base, Transform parent)
+        public void Init(Transform templateSource)
         {
-            template = Base.gameObject;
-
-            //template.transform.GetChild(0).GetComponent<TextMeshProUGUI>().enableAutoSizing = true;
-
-            menu = parent;
+            template = templateSource.gameObject;
         }
 
         public Transform AddButton(string name, UnityEngine.Events.UnityAction uAction)
         {
-            GameObject tmpButton = Instantiate(template, menu);
+            GameObject tmpButton = Instantiate(template);
             tmpButton.name = name;
-
-            //tmpButton.GetComponent<Image>().sprite = Sprite.Create(thumb, new Rect(0.0f, 0.0f, thumb.width, thumb.height), new Vector2(0.5f, 0.5f));
 
             Transform buttonText = tmpButton.transform.GetChild(0);
             Destroy(buttonText.GetComponent<I2.Loc.Localize>());
