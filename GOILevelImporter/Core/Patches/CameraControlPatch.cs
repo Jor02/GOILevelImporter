@@ -15,7 +15,7 @@ namespace GOILevelImporter.Core.Patches
     [HarmonyPatch(typeof(CameraControl), "FixedUpdate")]
     class CameraControlPatch
     {
-        static bool Prefix(CameraControl __instance, ref GameObject player, ref Vector3 ___vel, Camera ___mainCam)
+        static bool Prefix(CameraControl __instance, ref Vector3 ___vel, Camera ___mainCam)
         {
             if (!LevelLoader.Playing || LevelLoader.HasCustomSpline)
             {
@@ -26,6 +26,8 @@ namespace GOILevelImporter.Core.Patches
             {
                 return false;
             }
+
+            var player = __instance.player;
 
             if (player == null)
             {
