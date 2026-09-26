@@ -10,6 +10,7 @@
     }
   ],
   "description": "Tools for creating custom levels for GOILevelImporter",
-  "unity": "2022.3",
-  "unityRelease": "25f0"
+  "unity": "2020.3",
+  "unityRelease": "25f1",
+  "type": "tool"
 }

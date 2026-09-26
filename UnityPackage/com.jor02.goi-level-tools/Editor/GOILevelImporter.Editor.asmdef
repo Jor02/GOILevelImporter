@@ -1,8 +1,12 @@
 {
-    "name": "GOILevelImporter",
-    "rootNamespace": "GOILevelImporter",
-    "references": [],
-    "includePlatforms": [],
+    "name": "GOILevelImporter.Editor",
+    "rootNamespace": "GOILevelImporter.Editor",
+    "references": [
+        "GOILevelImporter.Components"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
