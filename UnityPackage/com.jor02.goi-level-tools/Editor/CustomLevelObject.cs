@@ -39,7 +39,9 @@ public class CustomLevelObject : ScriptableObject
     [MenuItem("Assets/Create/Custom Level", false, 1)]
     private static void CreateFromScene(MenuCommand command)
     {
-        if (command.context is not SceneAsset scene)
+        SceneAsset scene = command.context as SceneAsset;
+
+        if (scene == null)
         {
             return;
         }

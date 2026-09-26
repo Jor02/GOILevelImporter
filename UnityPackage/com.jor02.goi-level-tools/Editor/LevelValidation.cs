@@ -33,8 +33,8 @@ public static class LevelValidation
             Text = text;
         }
 
-        public static Message Error(string text) => new(Severity.Error, text);
-        public static Message Warning(string text) => new(Severity.Warning, text);
+        public static Message Error(string text) => new Message(Severity.Error, text);
+        public static Message Warning(string text) => new Message(Severity.Warning, text);
 
         public bool HasValue => Severity != Severity.None && !string.IsNullOrEmpty(Text);
 
@@ -77,11 +77,12 @@ public static class LevelValidation
     // and at least one goal, since most levels can have several goals.
     private static readonly MarkerRule[] MarkerRules =
     {
-        new(typeof(PlayerStart), min: 1, max: 1, Severity.Error),
-        new(typeof(Goal), min: 1, max: int.MaxValue, Severity.Warning)
+        new MarkerRule(typeof(PlayerStart), min: 1, max: 1, Severity.Error),
+        new MarkerRule(typeof(Goal), min: 1, max: int.MaxValue, Severity.Warning)
     };
 
-    private static readonly Dictionary<string, (Hash128 Hash, Dictionary<Type, int> Counts)> SceneMarkerCache = new();
+    private static readonly Dictionary<string, (Hash128 Hash, Dictionary<Type, int> Counts)> SceneMarkerCache =
+        new Dictionary<string, (Hash128 Hash, Dictionary<Type, int> Counts)>();
 
     /// <summary>
     /// Validates a single scene.
@@ -124,9 +125,11 @@ public static class LevelValidation
                 continue;
             }
 
-            foreach (var (type, count) in GetCachedMarkerCounts(path))
+            foreach (KeyValuePair<Type, int> entry in GetCachedMarkerCounts(path))
             {
-                counts[type] = counts.TryGetValue(type, out int existing) ? existing + count : count;
+                counts[entry.Key] = counts.TryGetValue(entry.Key, out int existing)
+                    ? existing + entry.Value
+                    : entry.Value;
             }
         }
 
