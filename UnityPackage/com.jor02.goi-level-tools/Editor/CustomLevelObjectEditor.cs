@@ -231,6 +231,12 @@ public class CustomLevelObjectEditor : Editor
                 showValidationErrors = true;
                 BuildLevel(level);
             }
+
+            if (GUILayout.Button("Test", GUILayout.Height(28)))
+            {
+                showValidationErrors = true;
+                BuildThenTest(level);
+            }
         }
     }
 
@@ -280,6 +286,35 @@ public class CustomLevelObjectEditor : Editor
         LevelBuilder.RememberBuildFolder(outputPath);
 
         LevelBuilder.Build(level, outputPath);
+    }
+
+    private void BuildThenTest(CustomLevelObject level)
+    {
+        if (string.IsNullOrWhiteSpace(level.LevelName))
+        {
+            return;
+        }
+
+        var levelMessages = LevelValidation.Validate(level.LevelScenes);
+        var errors = levelMessages.Where(m => m.Severity == LevelValidation.Severity.Error).ToList();
+
+        foreach (var warning in levelMessages.Where(m => m.Severity == LevelValidation.Severity.Warning))
+        {
+            Debug.LogWarning($"{level.LevelName}: {warning.Text}");
+        }
+
+        if (errors.Count > 0)
+        {
+            EditorUtility.DisplayDialog(
+                "Test Failed",
+                string.Join("\n", errors.Select(e => e.Text)) + "\n\nFix the errors before testing.",
+                "OK");
+            return;
+        }
+
+        showValidationErrors = false;
+
+        LevelTestLaunch.Test(level);
     }
 
     private void DrawAddOpenSceneButton()
