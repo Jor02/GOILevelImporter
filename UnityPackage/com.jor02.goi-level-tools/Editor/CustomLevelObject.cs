@@ -26,6 +26,9 @@ public class CustomLevelObject : ScriptableObject
         var seen = new HashSet<SceneAsset>();
         for (int i = LevelScenes.Count - 1; i >= 0; i--)
         {
+            if (LevelScenes[i] == null)
+                continue;
+
             if (!seen.Add(LevelScenes[i]))
             {
                 LevelScenes.RemoveAt(i);
