@@ -11,6 +11,9 @@ public static class GltWriter
 {
     // Same five bytes LevelLoader checks before it treats a file as a .glf.
     private static readonly byte[] Header = { 0x47, 0x4F, 0x49, 0x4C, 0x46 };
+    private const int targetThumbnailWidth = 700;
+    private const int targetTumbnailHeight = 400;
+
 
     /// <summary>
     /// Builds a .glf and returns the path written.
@@ -92,14 +95,23 @@ public static class GltWriter
             return new byte[0];
         }
 
-        // LoadImage overwrites the texture in place, so work on a copy.
-        var copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
-        copy.SetPixels(source.GetPixels());
+        RenderTexture renderTexture = RenderTexture.GetTemporary(targetThumbnailWidth, targetTumbnailHeight, 0, RenderTextureFormat.ARGB32);
+
+        Graphics.Blit(source, renderTexture);
+
+        RenderTexture previousActive = RenderTexture.active;
+        RenderTexture.active = renderTexture;
+
+        Texture2D copy = new Texture2D(targetThumbnailWidth, targetTumbnailHeight, TextureFormat.RGBA32, false);
+        copy.ReadPixels(new Rect(0, 0, targetThumbnailWidth, targetTumbnailHeight), 0, 0);
         copy.Apply();
 
-        byte[] png = ImageConversion.EncodeToPNG(copy);
+        RenderTexture.active = previousActive;
+        RenderTexture.ReleaseTemporary(renderTexture);
 
+        byte[] png = ImageConversion.EncodeToPNG(copy);
         Object.DestroyImmediate(copy);
+
         return png;
     }
 }
