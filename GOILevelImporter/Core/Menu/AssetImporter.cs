@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using GOILevelImporter.Utils;
@@ -11,43 +8,38 @@ namespace GOILevelImporter.Core.Menu
 {
     static class AssetImporter
     {
-        public static AssetBundle embededBundle;
+        private const float CardTextPadding = 14f;
 
         public static LevelSelectScreen createLevelSelect(GameObject templateText, Transform parent)
         {
-            if (embededBundle == null)
-                embededBundle = AssetBundle.LoadFromMemory(Properties.Resources.levelselect);
+            UiAssets.Load();
 
-            GameObject levelSelectScreen = GameObject.Instantiate(embededBundle.LoadAsset<GameObject>("LevelSelect"));
-            Transform textArea = levelSelectScreen.transform.Find("TopArea/Scroll Area/Viewport/Content/LevelSection/TextArea");
-            levelSelectScreen.transform.SetParent(parent, false);
+            GameObject levelSelectScreen = LevelSelectView.Build(parent);
 
+            Transform textArea = levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/Content/LevelSection/TextArea");
             GameObject levelText = GameObject.Instantiate(templateText, textArea);
             GameObject.Destroy(levelText.GetComponent<Localize>());
 
             TextMeshProUGUI levelTextMesh = levelText.GetComponent<TextMeshProUGUI>();
-            levelTextMesh.alpha = 1;
-            levelTextMesh.alignment = TextAlignmentOptions.Center;
+            LevelSelectView.ConfigureLevelNameLabel(levelTextMesh);
 
             RectTransform levelTextRect = levelText.GetComponent<RectTransform>();
             levelTextRect.SetStretchAnchor();
-            levelTextRect.SetRect(Rect.zero);
+            levelTextRect.SetRect(new Rect(CardTextPadding, CardTextPadding, CardTextPadding, CardTextPadding));
 
-            levelSelectScreen.transform.Find("TopArea/Scroll Area/Viewport/Content/LevelSection").gameObject.SetActive(false);
+            levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/Content/LevelSection").gameObject.SetActive(false);
             levelSelectScreen.transform.Find("TopArea/Description").gameObject.SetActive(true);
-            levelSelectScreen.transform.Find("TopArea/Scroll Area/Viewport/ErrorScreen").gameObject.AddComponent<LoadingError>().Init(levelSelectScreen.transform.Find("TopArea/Scroll Area/Viewport/Content").gameObject);
+            levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/ErrorScreen").gameObject.AddComponent<LoadingError>().Init(levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/Content").gameObject);
 
             return levelSelectScreen.AddComponent<LevelSelectScreen>();
         }
 
         public static LevelTransitionScreen createLevelTransition(Transform parent)
         {
-            if (embededBundle == null)
-                embededBundle = AssetBundle.LoadFromMemory(Properties.Resources.levelselect);
+            UiAssets.Load();
 
-            GameObject levelTransitionScreen = GameObject.Instantiate(embededBundle.LoadAsset<GameObject>("LevelTransition"));
-
-            return levelTransitionScreen.AddComponent<LevelTransitionScreen>();
+            return LevelTransitionView.Build().AddComponent<LevelTransitionScreen>();
         }
     }
 }
+

@@ -19,20 +19,21 @@ namespace GOILevelImporter.Core.Menu
         public ulong headerSize;
         public bool hasThumbnail;
         public Sprite thumbnail;
-        public Image background;
         public Core.LevelMetadata metadata;
 
         public LevelButton Init(string levelPath, string levelName, string author, string description, int id, bool legacy, Texture2D thumbnail, Action<int> onClickEvent, long headerSize, Core.LevelMetadata metadata)
         {
-            transform.Find("TextArea").GetChild(0).GetComponent<TextMeshProUGUI>().text = levelName;
+            TextMeshProUGUI levelLabel = transform.Find("TextArea").GetChild(0).GetComponent<TextMeshProUGUI>();
+            LevelSelectView.ConfigureLevelNameLabel(levelLabel);
+            levelLabel.text = levelName;
 
             hasThumbnail = (thumbnail != null);
             if (!legacy) {
-                this.thumbnail = (thumbnail != null) ? Sprite.Create(thumbnail, new Rect(0.0f, 0.0f, thumbnail.width, thumbnail.height), Vector2.one / 2) : AssetImporter.embededBundle.LoadAsset<Sprite>("MissingThumb");
+                this.thumbnail = (thumbnail != null) ? Sprite.Create(thumbnail, new Rect(0.0f, 0.0f, thumbnail.width, thumbnail.height), Vector2.one / 2) : UiAssets.MissingThumb;
                 transform.Find("Thumbnail").GetComponent<Image>().sprite = this.thumbnail;
             } else
             {
-                this.thumbnail = AssetImporter.embededBundle.LoadAsset<Sprite>("LegacyThumb");
+                this.thumbnail = UiAssets.LegacyThumb;
                 transform.Find("Thumbnail").GetComponent<Image>().sprite = this.thumbnail;
             }
 
@@ -45,15 +46,22 @@ namespace GOILevelImporter.Core.Menu
             this.description = description;
             this.headerSize = (ulong)headerSize;
             this.metadata = metadata;
-            background = GetComponent<Image>();
 
             Button button = GetComponent<Button>();
             button.onClick = new Button.ButtonClickedEvent();
             button.onClick.AddListener(() => { onClickEvent.Invoke(this.id); });
 
+            SetSelected(false);
+
             gameObject.SetActive(true);
 
             return this;
+        }
+
+        public void SetSelected(bool isSelected)
+        {
+            Button button = GetComponent<Button>();
+            button.colors = LevelSelectView.CardColorBlock(isSelected);
         }
     }
 }

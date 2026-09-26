@@ -326,8 +326,8 @@ namespace GOILevelImporter.Core
                         succesfulResponses.Add(response);
                         break;
                     case LevelLoader.Response.ResponseType.directoryNotFound:
-                        error.AddError("Level directory created, Please restart the game to load maps", false);
-                        return false;
+                        error.AddError("Level directory created, Please restart the game to load maps", true);
+                        break;
                     case LevelLoader.Response.ResponseType.metadataNotFound:
                     default:
                         error.AddError("An error occured: " + response.Message, true);
@@ -341,8 +341,8 @@ namespace GOILevelImporter.Core
                 return true;
             }
 
-            error.AddError("No levels found", false);
-            return false;
+            SuccesfulResponses = new Response[0];
+            return true;
         }
 
         public Response[] FetchLevels()

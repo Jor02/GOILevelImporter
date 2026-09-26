@@ -123,7 +123,7 @@ namespace GOILevelImporter
                 "Don't load any custom maps.",
                 0,
                 false,
-                AssetImporter.embededBundle.LoadAsset<Texture2D>("DefaultThumb"),
+                UiAssets.DefaultThumbTexture,
                 UpdateSelectedLevel,
                 0,
                 new Core.LevelMetadata("Default Map", "Bennett Foddy", "Don't load any custom maps.", false, false, null, 0)
@@ -183,10 +183,10 @@ namespace GOILevelImporter
         {
             foreach (LevelButton b in levelButtons)
             {
-                if (b.id == id)
-                    b.background.color = Color.green;
-                else
-                    b.background.color = new Color(1, 1, 1, 0.392156863f);
+                // Swap the whole colour block rather than the Image colour: a Selectable
+                // rewrites its target graphic's colour on every state change, so a colour set
+                // directly on the Image is discarded as soon as the card is focused or hovered.
+                b.SetSelected(b.id == id);
             }
 
             LevelButton curButton = levelButtons[id];
