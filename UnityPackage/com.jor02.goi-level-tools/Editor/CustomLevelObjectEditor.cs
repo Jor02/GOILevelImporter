@@ -21,6 +21,8 @@ public class CustomLevelObjectEditor : Editor
     
     private int pickerControlID = -1;
 
+    private bool showValidationErrors;
+
     private SerializedProperty levelNameProp;
     private SerializedProperty authorProp;
     private SerializedProperty descriptionProp;
@@ -97,7 +99,8 @@ public class CustomLevelObjectEditor : Editor
 
         EditorGUILayout.Space(4);
 
-        DrawPropertyWithPlaceholder(levelNameProp, "Level Name", "My Level");
+        DrawPropertyWithPlaceholder(levelNameProp, "Level Name", "My Level", isRequired: true);
+        DrawRequiredError(levelNameProp);
         DrawPropertyWithPlaceholder(authorProp, "Author", "John Doe");
 
         EditorGUILayout.Space(4);
@@ -146,45 +149,62 @@ public class CustomLevelObjectEditor : Editor
     private void DrawBuildButton()
     {
         var level = target as CustomLevelObject;
-        bool canBuild = level != null && level.LevelScenes != null && level.LevelScenes.Count > 0;
 
-        using (new EditorGUI.DisabledScope(!canBuild))
+        using (new EditorGUI.DisabledScope(level == null || level.LevelScenes == null
+                                           || level.LevelScenes.Count == 0))
         {
             if (GUILayout.Button("Build", GUILayout.Height(28)))
             {
+                showValidationErrors = true;
                 BuildLevel(level);
             }
         }
     }
 
-    private static void BuildLevel(CustomLevelObject level)
+    private void BuildLevel(CustomLevelObject level)
     {
-        if (level.LevelScenes == null || level.LevelScenes.Count == 0)
+        // No dialog here on purpose. The red message under the field is the
+        // feedback, so the button just quietly does nothing.
+        if (string.IsNullOrWhiteSpace(level.LevelName))
         {
-            EditorUtility.DisplayDialog("Build Failed", "This level has no scenes assigned.", "OK");
             return;
         }
 
-        string defaultFolder = GetDefaultBuildFolder();
+        // The name is filled in, so any pending message is stale.
+        showValidationErrors = false;
 
-        string outputFolder = EditorUtility.SaveFolderPanel(
+        // The missing scenes case never gets this far, the button is disabled
+        // for it, so no second guard is needed here.
+
+        // SaveFilePanel appends the extension argument itself, so the default
+        // name must be given without one or it ends up doubled.
+        string outputPath = EditorUtility.SaveFilePanel(
             "Build Level",
-            defaultFolder,
-            DefaultBuildFolderName);
+            GetDefaultBuildFolder(),
+            GetDefaultFileName(level),
+            LevelFileExtension);
 
-        if (string.IsNullOrEmpty(outputFolder))
+        if (string.IsNullOrEmpty(outputPath))
         {
             return;
         }
 
-        EditorPrefs.SetString(LastBuildFolderKey, outputFolder);
+        // The dialog normally applies the extension, but a hand typed name can
+        // still come back without one.
+        if (!outputPath.EndsWith(LevelFileExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            outputPath += LevelFileExtension;
+        }
 
-        BuildLevel(level, outputFolder);
+        EditorPrefs.SetString(LastBuildFolderKey, Path.GetDirectoryName(outputPath));
+
+        BuildLevel(level, outputPath);
     }
 
     /// <summary>
     /// Remembers the last used output folder so repeat builds are one click.
-    /// Falls back to a folder under Assets the first time around.
+    /// Defaults to the game's Levels folder when the install can be found,
+    /// since that is where the mod looks for levels.
     /// </summary>
     private static string GetDefaultBuildFolder()
     {
@@ -195,10 +215,17 @@ public class CustomLevelObjectEditor : Editor
             return lastFolder;
         }
 
+        string levelsDirectory = GoiInstall.LevelsDirectory;
+
+        if (!string.IsNullOrEmpty(levelsDirectory))
+        {
+            return levelsDirectory;
+        }
+
         return Path.Combine(Application.dataPath, "..", DefaultBuildFolderName);
     }
 
-    private static void BuildLevel(CustomLevelObject level, string outputFolder)
+    private static void BuildLevel(CustomLevelObject level, string outputPath)
     {
         var scenePaths = GetValidScenePaths(level, out var skipped);
 
@@ -208,6 +235,8 @@ public class CustomLevelObjectEditor : Editor
             return;
         }
 
+        // The bundle name stays tied to the level, not to the chosen file name,
+        // so renaming the output does not change the bundle identity.
         string bundleName = SanitizeFileName(
             string.IsNullOrEmpty(level.LevelName) ? level.name : level.LevelName);
 
@@ -216,8 +245,6 @@ public class CustomLevelObjectEditor : Editor
             assetBundleName = bundleName,
             assetNames = scenePaths
         };
-
-        string outputPath = Path.Combine(outputFolder, bundleName + LevelFileExtension);
 
         // The bundle has to be a standalone file so it can be appended to the
         // .glf, so it goes to a temp folder instead of straight to the output.
@@ -329,6 +356,16 @@ public class CustomLevelObjectEditor : Editor
     }
 
     /// <summary>
+    /// The file name the build dialog opens on. Unnamed levels never reach the
+    /// dialog, since the build is refused before that point.
+    /// </summary>
+    private static string GetDefaultFileName(CustomLevelObject level)
+    {
+        return SanitizeFileName(
+            string.IsNullOrEmpty(level.LevelName) ? level.name : level.LevelName);
+    }
+
+    /// <summary>
     /// Bundle names end up as file names and manifest keys, so anything the
     /// file system would object to gets swapped for an underscore.
     /// </summary>
@@ -376,14 +413,53 @@ public class CustomLevelObjectEditor : Editor
         }
     }
 
-    private void DrawPropertyWithPlaceholder(SerializedProperty prop, string label, string placeholder)
+    /// <summary>
+    /// Red validation message under a required field. Shown only after a failed
+    /// build, and hidden again once the field is filled in.
+    /// </summary>
+    private void DrawRequiredError(SerializedProperty prop)
     {
+        if (!showValidationErrors || !string.IsNullOrWhiteSpace(prop.stringValue))
+        {
+            return;
+        }
+
+        GUIStyle errorStyle = new GUIStyle(EditorStyles.miniLabel)
+        {
+            normal = { textColor = new Color(0.9f, 0.35f, 0.35f) }
+        };
+
+        // Indented to sit under the field rather than under the label column.
+        Rect rect = EditorGUILayout.GetControlRect();
+        rect.x += EditorGUIUtility.labelWidth + PlaceholderPadding;
+
+        GUI.Label(rect, "A level name is required.", errorStyle);
+    }
+
+    private void DrawPropertyWithPlaceholder(SerializedProperty prop, string label, string placeholder, bool isRequired = false)
+    {
+        EditorGUILayout.BeginHorizontal();
+        
         EditorGUILayout.PropertyField(prop, new GUIContent(label));
+        
+        // Grab the rect immediately after the PropertyField so the placeholder aligns correctly
+        Rect fieldRect = GUILayoutUtility.GetLastRect();
+
+        // If the field is marked required and is empty, append the icon
+        if (isRequired && string.IsNullOrEmpty(prop.stringValue))
+        {
+            // Grab a standard Unity UI icon and attach the requested tooltip
+            GUIContent requiredIcon = EditorGUIUtility.IconContent("console.erroricon.sml");
+            requiredIcon.tooltip = "This field is required.";
+            
+            // Draw the icon inline to the right of the property field
+            GUILayout.Label(requiredIcon, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight));
+        }
+
+        EditorGUILayout.EndHorizontal();
 
         if (string.IsNullOrEmpty(prop.stringValue))
         {
-            Rect fieldRect = GUILayoutUtility.GetLastRect();
-
             fieldRect.x += EditorGUIUtility.labelWidth + PlaceholderPadding;
             fieldRect.width -= EditorGUIUtility.labelWidth + PlaceholderPadding;
 
