@@ -6,11 +6,74 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 using UnityEditorInternal;
+using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
+using GOILevelImporter.Components;
 
 [CustomEditor(typeof(CustomLevelObject))]
 public class CustomLevelObjectEditor : Editor
 {
+    /// <summary>
+    /// How serious a validation message is. Errors block the build, warnings only nag.
+    /// </summary>
+    public enum ValidationSeverity
+    {
+        None,
+        Warning,
+        Error
+    }
+
+    public readonly struct ValidationMessage
+    {
+        public readonly ValidationSeverity Severity;
+        public readonly string Message;
+
+        private ValidationMessage(ValidationSeverity severity, string message)
+        {
+            Severity = severity;
+            Message = message;
+        }
+
+        public static ValidationMessage Error(string message) => new(ValidationSeverity.Error, message);
+        public static ValidationMessage Warning(string message) => new(ValidationSeverity.Warning, message);
+
+        public bool HasValue => Severity != ValidationSeverity.None && !string.IsNullOrEmpty(Message);
+
+        public static ValidationMessage Worst(params ValidationMessage[] messages)
+        {
+            var worst = default(ValidationMessage);
+
+            foreach (var message in messages)
+            {
+                if (message.Severity > worst.Severity)
+                {
+                    worst = message;
+                }
+            }
+
+            return worst;
+        }
+    }
+
+    /// <summary>
+    /// How many instances of a marker a level may have, and how bad it is when it does not match.
+    /// </summary>
+    public readonly struct MarkerRule
+    {
+        public readonly Type Type;
+        public readonly int Min;
+        public readonly int Max;
+        public readonly ValidationSeverity Severity;
+
+        public MarkerRule(Type type, int min, int max, ValidationSeverity severity)
+        {
+            Type = type;
+            Min = min;
+            Max = max;
+            Severity = severity;
+        }
+    }
+
     private const float AspectWidth = 718f;
     private const float AspectHeight = 400f;
     private const float PlaceholderPadding = 4f;
@@ -29,6 +92,16 @@ public class CustomLevelObjectEditor : Editor
     private SerializedProperty levelScenesProp;
     private ReorderableList sceneList;
 
+    private static readonly Dictionary<string, (Hash128 Hash, ValidationMessage[] Messages)> SceneValidationCache = new();
+
+    // Errors block the build, warnings do not. A level allows exactly one player start
+    // and at least one goal, since most levels can have several goals.
+    private static readonly MarkerRule[] MarkerRules =
+    {
+        new(typeof(PlayerStart), min: 1, max: 1, ValidationSeverity.Error),
+        new(typeof(Goal), min: 1, max: int.MaxValue, ValidationSeverity.Warning)
+    };
+
     private void OnEnable()
     {
         levelNameProp = serializedObject.FindProperty("LevelName");
@@ -42,15 +115,222 @@ public class CustomLevelObjectEditor : Editor
             displayAddButton: true, 
             displayRemoveButton: true);
 
+        sceneList.onAddCallback = (ReorderableList list) =>
+        {
+            int index = list.serializedProperty.arraySize;
+            list.serializedProperty.arraySize++;
+            list.index = index;
+
+            SerializedProperty element = list.serializedProperty.GetArrayElementAtIndex(index);
+            element.objectReferenceValue = null;
+        };
+
         sceneList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
         {
+            const float iconWidth = 20f;
+            const float iconPadding = 4f;
+
             SerializedProperty element = sceneList.serializedProperty.GetArrayElementAtIndex(index);
 
             rect.y += 2;
             rect.height = EditorGUIUtility.singleLineHeight;
-            
-            EditorGUI.PropertyField(rect, element, GUIContent.none);
+
+            var messages = GetSceneMessages(element);
+            var worst = ValidationMessage.Worst(messages);
+            bool hasMessage = worst.HasValue;
+
+            Rect fieldRect = rect;
+            if (hasMessage)
+            {
+                fieldRect.width -= (iconWidth + iconPadding);
+            }
+
+            // Draw the scene property field
+            EditorGUI.PropertyField(fieldRect, element, GUIContent.none);
+
+            if (hasMessage)
+            {
+                Rect iconRect = new Rect(
+                    rect.xMax - iconWidth,
+                    rect.y,
+                    iconWidth,
+                    EditorGUIUtility.singleLineHeight
+                );
+
+                string iconName = worst.Severity == ValidationSeverity.Error
+                    ? "console.erroricon.sml"
+                    : "console.warnicon.sml";
+
+                GUIContent messageIcon = EditorGUIUtility.IconContent(iconName);
+                messageIcon.tooltip = string.Join("\n", messages
+                    .Where(m => m.HasValue)
+                    .Select(m => $"{Prefix(m.Severity)}{m.Message}"));
+
+                GUI.Label(iconRect, messageIcon);
+            }
         };
+    }
+
+    private static string Prefix(ValidationSeverity severity) =>
+        severity == ValidationSeverity.Error ? "Error: " : "Warning: ";
+
+    private ValidationMessage[] GetSceneMessages(SerializedProperty element)
+    {
+        if (element.objectReferenceValue == null)
+        {
+            return new[] { ValidationMessage.Error("Scene reference is missing or unassigned.") };
+        }
+
+        var sceneAsset = element.objectReferenceValue as SceneAsset;
+        string scenePath = AssetDatabase.GetAssetPath(sceneAsset);
+
+        if (string.IsNullOrEmpty(scenePath))
+        {
+            return new[] { ValidationMessage.Error("Invalid scene path.") };
+        }
+
+        return GetOrValidateSceneContent(scenePath);
+    }
+
+    private ValidationMessage[] GetOrValidateSceneContent(string scenePath)
+    {
+        Hash128 currentHash = AssetDatabase.GetAssetDependencyHash(scenePath);
+
+        if (SceneValidationCache.TryGetValue(scenePath, out var cachedResult) && cachedResult.Hash == currentHash)
+        {
+            return cachedResult.Messages;
+        }
+
+        ValidationMessage[] newMessages = ValidateSceneContents(scenePath);
+        SceneValidationCache[scenePath] = (currentHash, newMessages);
+
+        return newMessages;
+    }
+
+    private static ValidationMessage[] ValidateSceneContents(string scenePath)
+    {
+        string sceneName = Path.GetFileNameWithoutExtension(scenePath);
+
+        return EvaluateRules(GetCachedComponentMarkers(scenePath), sceneName).ToArray();
+    }
+
+    private List<ValidationMessage> GetLevelMessages()
+    {
+        return EvaluateRules(GetLevelMarkerCounts(), null);
+    }
+
+    private Dictionary<Type, int> GetLevelMarkerCounts()
+    {
+        var counts = new Dictionary<Type, int>();
+
+        foreach (var scene in levelScenesProp.arraySize > 0
+                     ? Enumerable.Range(0, levelScenesProp.arraySize)
+                         .Select(i => levelScenesProp.GetArrayElementAtIndex(i).objectReferenceValue as SceneAsset)
+                     : Enumerable.Empty<SceneAsset>())
+        {
+            if (scene == null)
+            {
+                continue;
+            }
+
+            string path = AssetDatabase.GetAssetPath(scene);
+
+            if (string.IsNullOrEmpty(path))
+            {
+                continue;
+            }
+
+            foreach (var (type, count) in GetCachedComponentMarkers(path))
+            {
+                counts[type] = counts.TryGetValue(type, out int existing) ? existing + count : count;
+            }
+        }
+
+        return counts;
+    }
+
+    private static List<ValidationMessage> EvaluateRules(Dictionary<Type, int> counts, string sceneName)
+    {
+        string where = sceneName == null ? "This level" : $"Scene '{sceneName}'";
+
+        var messages = new List<ValidationMessage>();
+
+        foreach (var rule in MarkerRules)
+        {
+            counts.TryGetValue(rule.Type, out int count);
+
+            if (count < rule.Min)
+            {
+                messages.Add(ToMessage(rule.Severity, $"{where} has no '{rule.Type.Name}'."));
+                continue;
+            }
+
+            if (count > rule.Max)
+            {
+                messages.Add(ToMessage(
+                    rule.Severity,
+                    $"{where} has {count} '{rule.Type.Name}' components, but at most {rule.Max} allowed."));
+            }
+        }
+
+        return messages;
+    }
+
+    private static ValidationMessage ToMessage(ValidationSeverity severity, string message) =>
+        severity == ValidationSeverity.Error
+            ? ValidationMessage.Error(message)
+            : ValidationMessage.Warning(message);
+
+    private static readonly Dictionary<string, (Hash128 Hash, Dictionary<Type, int> Counts)> SceneMarkerCache = new();
+
+    private static Dictionary<Type, int> GetCachedComponentMarkers(string scenePath)
+    {
+        Hash128 currentHash = AssetDatabase.GetAssetDependencyHash(scenePath);
+
+        if (SceneMarkerCache.TryGetValue(scenePath, out var cached) && cached.Hash == currentHash)
+        {
+            return cached.Counts;
+        }
+
+        // Opening scenes is expensive, so only do it when the scene actually changed.
+        var counts = CountComponentsInScene(scenePath);
+        SceneMarkerCache[scenePath] = (currentHash, counts);
+
+        return counts;
+    }
+
+    /// <summary>
+    /// Counts instances of every required marker type, including on inactive objects.
+    /// </summary>
+    private static Dictionary<Type, int> CountComponentsInScene(string scenePath)
+    {
+        var counts = new Dictionary<Type, int>();
+
+        Scene openScene = SceneManager.GetActiveScene();
+        bool wasOpen = openScene.IsValid() && openScene.path == scenePath;
+
+        Scene scene = wasOpen ? openScene : EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+
+        try
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (var component in root.GetComponentsInChildren<Component>(true))
+                {
+                    var type = component.GetType();
+                    counts[type] = counts.TryGetValue(type, out int existing) ? existing + 1 : 1;
+                }
+            }
+        }
+        finally
+        {
+            if (!wasOpen && scene.IsValid() && scene.isLoaded)
+            {
+                EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        return counts;
     }
 
     public override void OnInspectorGUI()
@@ -137,6 +417,8 @@ public class CustomLevelObjectEditor : Editor
 
         DrawAddOpenSceneButton();
 
+        EditorGUILayout.Space(4);
+
         EditorGUILayout.EndVertical();
         GUILayout.Space(MetadataPadding);
         EditorGUILayout.EndHorizontal();
@@ -163,21 +445,32 @@ public class CustomLevelObjectEditor : Editor
 
     private void BuildLevel(CustomLevelObject level)
     {
-        // No dialog here on purpose. The red message under the field is the
-        // feedback, so the button just quietly does nothing.
         if (string.IsNullOrWhiteSpace(level.LevelName))
         {
             return;
         }
 
-        // The name is filled in, so any pending message is stale.
+        var levelMessages = GetLevelMessages();
+        var errors = levelMessages.Where(m => m.Severity == ValidationSeverity.Error).ToList();
+        var warnings = levelMessages.Where(m => m.Severity == ValidationSeverity.Warning).ToList();
+
+        foreach (var warning in warnings)
+        {
+            Debug.LogWarning($"{level.LevelName}: {warning.Message}");
+        }
+
+
+        if (errors.Count > 0)
+        {
+            EditorUtility.DisplayDialog(
+                "Build Failed",
+                string.Join("\n", errors.Select(e => e.Message)) + "\n\nFix the errors before building.",
+                "OK");
+            return;
+        }
+
         showValidationErrors = false;
 
-        // The missing scenes case never gets this far, the button is disabled
-        // for it, so no second guard is needed here.
-
-        // SaveFilePanel appends the extension argument itself, so the default
-        // name must be given without one or it ends up doubled.
         string outputPath = EditorUtility.SaveFilePanel(
             "Build Level",
             GetDefaultBuildFolder(),
@@ -189,8 +482,6 @@ public class CustomLevelObjectEditor : Editor
             return;
         }
 
-        // The dialog normally applies the extension, but a hand typed name can
-        // still come back without one.
         if (!outputPath.EndsWith(LevelFileExtension, StringComparison.OrdinalIgnoreCase))
         {
             outputPath += LevelFileExtension;
@@ -201,11 +492,6 @@ public class CustomLevelObjectEditor : Editor
         BuildLevel(level, outputPath);
     }
 
-    /// <summary>
-    /// Remembers the last used output folder so repeat builds are one click.
-    /// Defaults to the game's Levels folder when the install can be found,
-    /// since that is where the mod looks for levels.
-    /// </summary>
     private static string GetDefaultBuildFolder()
     {
         string lastFolder = EditorPrefs.GetString(LastBuildFolderKey, string.Empty);
@@ -235,8 +521,6 @@ public class CustomLevelObjectEditor : Editor
             return;
         }
 
-        // The bundle name stays tied to the level, not to the chosen file name,
-        // so renaming the output does not change the bundle identity.
         string bundleName = SanitizeFileName(
             string.IsNullOrEmpty(level.LevelName) ? level.name : level.LevelName);
 
@@ -246,16 +530,13 @@ public class CustomLevelObjectEditor : Editor
             assetNames = scenePaths
         };
 
-        // The bundle has to be a standalone file so it can be appended to the
-        // .glf, so it goes to a temp folder instead of straight to the output.
         string tempFolder = Path.Combine(Path.GetTempPath(), "GOILevelBuild_" + bundleName);
         Directory.CreateDirectory(tempFolder);
 
         string bundlePath = Path.Combine(tempFolder, bundleName);
 
         var target = EditorUserBuildSettings.activeBuildTarget;
-        var options = BuildAssetBundleOptions.ChunkBasedCompression
-                      | BuildAssetBundleOptions.DeterministicAssetBundle;
+        var options = BuildAssetBundleOptions.ChunkBasedCompression;
 
         Debug.Log($"Building '{level.LevelName}' from {scenePaths.Length} scene(s) for {target}:");
 
@@ -303,10 +584,6 @@ public class CustomLevelObjectEditor : Editor
         EditorUtility.RevealInFinder(outputPath);
     }
 
-    /// <summary>
-    /// The temp folder is created outside the project, so nothing is left
-    /// behind even when the build throws.
-    /// </summary>
     private static void DeleteTempFolder(string tempFolder)
     {
         try
@@ -322,11 +599,6 @@ public class CustomLevelObjectEditor : Editor
         }
     }
 
-    /// <summary>
-    /// Grabs the scene paths that can actually be bundled. Entries that lost
-    /// their asset (deleted, moved, unresaved) would fail the whole build, so
-    /// they get dropped and reported instead.
-    /// </summary>
     private static string[] GetValidScenePaths(CustomLevelObject level, out int skipped)
     {
         var paths = new List<string>();
@@ -355,20 +627,12 @@ public class CustomLevelObjectEditor : Editor
         return paths.ToArray();
     }
 
-    /// <summary>
-    /// The file name the build dialog opens on. Unnamed levels never reach the
-    /// dialog, since the build is refused before that point.
-    /// </summary>
     private static string GetDefaultFileName(CustomLevelObject level)
     {
         return SanitizeFileName(
             string.IsNullOrEmpty(level.LevelName) ? level.name : level.LevelName);
     }
 
-    /// <summary>
-    /// Bundle names end up as file names and manifest keys, so anything the
-    /// file system would object to gets swapped for an underscore.
-    /// </summary>
     private static string SanitizeFileName(string name)
     {
         var builder = new StringBuilder(name.Length);
@@ -413,10 +677,6 @@ public class CustomLevelObjectEditor : Editor
         }
     }
 
-    /// <summary>
-    /// Red validation message under a required field. Shown only after a failed
-    /// build, and hidden again once the field is filled in.
-    /// </summary>
     private void DrawRequiredError(SerializedProperty prop)
     {
         if (!showValidationErrors || !string.IsNullOrWhiteSpace(prop.stringValue))
