@@ -1,0 +1,15 @@
+{
+  "name": "com.jor02.goi-level-tools",
+  "version": "1.0.0",
+  "displayName": "GOI Level Tools",
+  "samples": [
+    {
+      "displayName": "Basic Level",
+      "description": "A simple example level demonstrating the GOI Level Tools workflow.",
+      "path": "Samples~/Basic Level"
+    }
+  ],
+  "description": "Tools for creating custom levels for GOILevelImporter",
+  "unity": "2022.3",
+  "unityRelease": "25f0"
+}
