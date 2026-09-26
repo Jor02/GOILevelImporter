@@ -53,19 +53,10 @@
     <Error Text="The game folder was not found, so Assembly-CSharp and the other game DLLs cannot be referenced. Install Getting Over It, or set GameDirectory in Directory.GOI.props next to Directory.Build.props." />
   </Target>
 
+  <!-- The level select UI is built in code, so the only assets the plugin carries are these
+       six PNGs. They ride along in the DLL and are decoded by UiAssets at menu load. -->
   <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\*.png" LogicalName="GOILevelImporter.Assets.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
