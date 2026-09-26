@@ -162,6 +162,26 @@ namespace GOILevelImporter.Core
         /// Reads a GLF file from path.
         /// A .glf file is a 5 byte magic header followed by LZMA-compressed metadata blob, then the asset bundle itself.
         /// </summary>
+        public static Response ReadSingleLevel(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                return new Response(Response.ResponseType.metadataNotFound);
+            }
+
+            if (path.EndsWith(".scene", StringComparison.OrdinalIgnoreCase))
+            {
+                return ReadLegacyLevel(path);
+            }
+
+            if (path.EndsWith(".glf", StringComparison.OrdinalIgnoreCase))
+            {
+                return ReadGlfLevel(path);
+            }
+
+            return new Response(Response.ResponseType.wrongFileType);
+        }
+
         private static Response ReadGlfLevel(string path)
         {
             using Stream stream = new FileStream(path, FileMode.Open);

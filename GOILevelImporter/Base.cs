@@ -16,6 +16,7 @@ namespace GOILevelImporter
         {
             Instance = this;
 
+            CommandLine.Capture();
             new GameObject("Level Loader", typeof(LevelLoader));
             LevelSelectionState.BindConfig(Config);
 
@@ -24,12 +25,27 @@ namespace GOILevelImporter
             new Harmony(PluginInfo.GUID).PatchAll();
         }
 
+        private System.Collections.IEnumerator SetupMenuWithTestLaunch()
+        {
+            if (CommandLine.HasTestLevel)
+            {
+                yield return null;
+
+                Transform ui = GameObject.Find("/Canvas").transform;
+                MainMenuController.EnsureTransitionScreen(ui);
+                yield return CommandLine.AutoStartTestLevel();
+                yield break;
+            }
+
+            yield return MainMenuController.Instance.Setup();
+        }
+
         private void OnSceneLoaded(Scene target, LoadSceneMode mode)
         {
             if (target.name == "Loader")
             {
                 LevelLoader.Instance.Reset();
-                StartCoroutine(MainMenuController.Instance.Setup());
+                StartCoroutine(SetupMenuWithTestLaunch());
             }
             else if (!LevelLoader.Async && target.name == "Mian" && mode != LoadSceneMode.Additive && !LevelSelectionState.IsDefault)
             {

@@ -37,14 +37,24 @@ namespace GOILevelImporter.Core.Menu
             });
             levelScreen.levelScreen.SetActive(false);
 
-            if (LevelTransitionScreen.Instance == null)
-            {
-                AssetImporter.createLevelTransition(ui);
-            }
+            EnsureTransitionScreen(ui);
 
             AddSelectLevelButton(menuButtonGenerator, column, levelScreen.levelScreen);
 
             PopulateLevelList(levelScreen);
+        }
+
+        /// <summary>
+        /// Creates the transition overlay used when a level starts. Split out
+        /// so the --test-level path can skip the full menu (level list scan,
+        /// thumbnails, buttons) and only build what the loader patch needs.
+        /// </summary>
+        public static void EnsureTransitionScreen(Transform ui)
+        {
+            if (LevelTransitionScreen.Instance == null)
+            {
+                AssetImporter.createLevelTransition(ui);
+            }
         }
 
         private static void ShowModVersion(Transform ui)
