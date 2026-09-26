@@ -57,6 +57,7 @@ namespace GOILevelImporter.Core
             if (currectBundle)
             {
                 currectBundle.Unload(true);
+                currectBundle = null;
             }
 
             Playing = false;
@@ -72,6 +73,35 @@ namespace GOILevelImporter.Core
             Legacy = legacy;
             currentBundlePath = path;
             currectBundle = AssetBundle.LoadFromFile(path, 0, headerSize);
+
+            if (currectBundle == null)
+            {
+                ReportBundleFailure(path, headerSize);
+
+                // Nothing to load, so drop back to "no level started" and let the
+                // game continue into its own scene instead of a botched fade.
+                Playing = false;
+                currentBundlePath = string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Explains a bundle the runtime refused to open. Unity only loads bundles
+        /// built by the same Unity version line as the player, and the bundle
+        /// header records the version that built it, so that gets read back here
+        /// instead of leaving the bare "Unable to read header from archive file"
+        /// in the log.
+        /// </summary>
+        private static void ReportBundleFailure(string path, ulong headerSize)
+        {
+            string builtWith = LevelFileScanner.ReadBundleUnityVersion(path, (long)headerSize);
+
+            Debug.LogError("Could not load level '" + path + "'. Unity " + Application.unityVersion +
+                           " could not read the bundle header" +
+                           (string.IsNullOrEmpty(builtWith)
+                               ? string.Empty
+                               : ", and the bundle says it was built with Unity " + builtWith) +
+                           ". Rebuild the level with Unity " + Application.unityVersion + " to load it.");
         }
 
         /// <summary>
@@ -115,6 +145,25 @@ namespace GOILevelImporter.Core
 
         public IEnumerator LoadLevel()
         {
+            // A failed bundle is reported and cleared by BeginLoadLevel, and a
+            // bundle without scenes has nothing to show. Both would fault further
+            // down, so stop here and leave the game on its own scene.
+            if (currectBundle == null)
+            {
+                Debug.LogWarning("Skipping level load: no bundle is loaded.");
+                Loading = false;
+                yield break;
+            }
+
+            string[] scenePaths = currectBundle.GetAllScenePaths();
+
+            if (scenePaths.Length == 0)
+            {
+                Debug.LogError("Level bundle '" + currentBundlePath + "' holds no scenes.");
+                Loading = false;
+                yield break;
+            }
+
             Loading = true;
             yield return new WaitForEndOfFrame();
             Physics2D.simulationMode = SimulationMode2D.Script;
@@ -133,7 +182,7 @@ namespace GOILevelImporter.Core
             // A SwitchScene trigger may have moved us to a sub-scene of this level.
             // Falls back to the bundle's entry scene on the first load.
             string targetScene = LevelSelectionState.GetPendingScene(currentBundlePath);
-            string scenePath = string.IsNullOrWhiteSpace(targetScene) ? currectBundle.GetAllScenePaths()[0] : targetScene;
+            string scenePath = string.IsNullOrWhiteSpace(targetScene) ? scenePaths[0] : targetScene;
 
             AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Additive);
             while (!asyncLoad.isDone) yield return null;

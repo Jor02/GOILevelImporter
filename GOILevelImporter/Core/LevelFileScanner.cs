@@ -14,6 +14,7 @@ namespace GOILevelImporter.Core
     static class LevelFileScanner
     {
         private static readonly byte[] GlfHeader = { 0x47, 0x4F, 0x49, 0x4C, 0x46 };
+        private static readonly byte[] BundleSignature = { 0x55, 0x6E, 0x69, 0x74, 0x79, 0x46, 0x53, 0x00 };
 
         public struct Response
         {
@@ -200,6 +201,57 @@ namespace GOILevelImporter.Core
             LevelMetadata metadata = DecodeGlfMetadata(decompressedMetaData);
 
             return new Response(Response.ResponseType.success, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), headerSize);
+        }
+
+        /// <summary>
+        /// Reads the Unity version that built the asset bundle sitting at offset in
+        /// a .glf. Returns null when nothing readable is there.
+        ///
+        /// Used to explain a bundle the game's Unity refused to open, which is
+        /// almost always a bundle built by a different Unity version line.
+        /// </summary>
+        public static string ReadBundleUnityVersion(string path, long offset)
+        {
+            try
+            {
+                using Stream stream = new FileStream(path, FileMode.Open);
+                stream.Seek(offset, SeekOrigin.Begin);
+
+                byte[] signature = new byte[BundleSignature.Length];
+
+                if (stream.Read(signature, 0, signature.Length) != signature.Length || !signature.SequenceEqual(BundleSignature))
+                {
+                    return null;
+                }
+
+                // The format version comes first, then the minimum player version
+                // and the version of the editor that built the bundle.
+                stream.Seek(4, SeekOrigin.Current);
+                ReadNullTerminatedString(stream);
+                return ReadNullTerminatedString(stream);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private static string ReadNullTerminatedString(Stream stream)
+        {
+            var builder = new System.Text.StringBuilder();
+
+            while (true)
+            {
+                int value = stream.ReadByte();
+
+                // A file that ends early hands back -1, which ends the string too.
+                if (value <= 0)
+                {
+                    return builder.ToString();
+                }
+
+                builder.Append((char)value);
+            }
         }
 
         private static LevelMetadata DecodeGlfMetadata(byte[] decompressedMetaData)
