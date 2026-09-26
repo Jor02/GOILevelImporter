@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Win32;
+using System.Reflection;
 using UnityEngine;
 
 /// <summary>
@@ -13,14 +13,30 @@ public static class GoiInstall
     private const string GameFolderName = "Getting Over It";
     private const string GameDataFolderName = "GettingOverIt_Data";
     private const string LevelsFolderName = "Levels";
+    private const string UnityPlayerFileName = "UnityPlayer.dll";
 
     private const string UninstallKeyPath =
         @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App " + SteamAppNumber;
 
     private const string SteamKeyPath = @"SOFTWARE\Valve\Steam";
 
+    private const string UninstallKeyPath32 =
+        @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam App " + SteamAppNumber;
+
+    private const string SteamKeyPath32 = @"SOFTWARE\WOW6432Node\Valve\Steam";
+
+    private const string LocalMachineHive = "LocalMachine";
+    private const string CurrentUserHive = "CurrentUser";
+
+    private static readonly Type RegistryType =
+        Type.GetType("Microsoft.Win32.Registry, Microsoft.Win32.Registry", throwOnError: false)
+        ?? Type.GetType("Microsoft.Win32.Registry, mscorlib", throwOnError: false);
+
     private static string cachedGameDirectory;
     private static bool hasSearched;
+
+    private static string cachedUnityVersion;
+    private static bool hasLookedUpUnityVersion;
 
     /// <summary>
     /// The game folder, or null when the install could not be found.
@@ -54,7 +70,32 @@ public static class GoiInstall
         }
     }
 
+    public const string GameExeName = "GettingOverIt.exe";
+
+    public static string GameExePath
+    {
+        get
+        {
+            string gameDirectory = GameDirectory;
+            return string.IsNullOrEmpty(gameDirectory) ? null : Path.Combine(gameDirectory, GameExeName);
+        }
+    }
+
     public static bool IsInstalled => !string.IsNullOrEmpty(GameDirectory);
+
+    public static string GameUnityVersion
+    {
+        get
+        {
+            if (!hasLookedUpUnityVersion)
+            {
+                cachedUnityVersion = DetectUnityVersion();
+                hasLookedUpUnityVersion = true;
+            }
+
+            return cachedUnityVersion;
+        }
+    }
 
     /// <summary>
     /// Forgets the cached result so a freshly installed or moved game is picked
@@ -64,26 +105,112 @@ public static class GoiInstall
     {
         hasSearched = false;
         cachedGameDirectory = null;
+
+        hasLookedUpUnityVersion = false;
+        cachedUnityVersion = null;
     }
 
     /// <summary>
-    /// Opens a registry value, returning null for anything that goes wrong.
-    /// A missing key is normal on a machine without Steam, so failures are
-    /// swallowed rather than logged.
+    /// Reads the player version off UnityPlayer.dll, which carries the full
+    /// build string ("2020.3.25.10195328"). The last part is the build number,
+    /// so it is dropped to leave a version that compares against
+    /// Application.unityVersion.
     /// </summary>
-    private static string ReadRegistryString(RegistryKey root, string keyPath, string valueName)
+    private static string DetectUnityVersion()
     {
+        string gameDirectory = GameDirectory;
+
+        if (string.IsNullOrEmpty(gameDirectory))
+        {
+            return null;
+        }
+
         try
         {
-            using (RegistryKey key = root.OpenSubKey(keyPath))
+            string playerPath = Path.Combine(gameDirectory, UnityPlayerFileName);
+
+            if (!File.Exists(playerPath))
             {
-                return key?.GetValue(valueName) as string;
+                return null;
             }
+
+            string[] parts = System.Diagnostics.FileVersionInfo.GetVersionInfo(playerPath).FileVersion?.Split('.');
+
+            return parts != null && parts.Length >= 3
+                ? parts[0] + "." + parts[1] + "." + parts[2]
+                : null;
+        }
+        catch (Exception)
+        {
+            // A missing or locked player only costs the version check.
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Reads a registry string value, returning null when the hive, the key, or
+    /// the value is missing. A machine without Steam has none of them, so
+    /// failures are swallowed rather than logged.
+    /// </summary>
+    private static string ReadRegistryString(string hive, string keyPath, string valueName)
+    {
+        object key = null;
+
+        try
+        {
+            // OpenSubKey and GetValue sit on Microsoft.Win32.RegistryKey, which is
+            // not available at compile time either, so they are pulled off the
+            // runtime types.
+            key = InvokeStringMethod(RegistryRoot(hive), "OpenSubKey", keyPath);
+
+            return InvokeStringMethod(key, "GetValue", valueName) as string;
         }
         catch (Exception)
         {
             return null;
         }
+        finally
+        {
+            (key as IDisposable)?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The hive key object, or null when the registry cannot be reached. Mono
+    /// exposes the hives as static fields and the .NET Framework as static
+    /// properties, so both are checked.
+    /// </summary>
+    private static object RegistryRoot(string hive)
+    {
+        if (RegistryType == null)
+        {
+            return null;
+        }
+
+        MemberInfo[] members = RegistryType.GetMember(hive, BindingFlags.Public | BindingFlags.Static);
+
+        if (members.Length == 0)
+        {
+            return null;
+        }
+
+        FieldInfo field = members[0] as FieldInfo;
+
+        if (field != null)
+        {
+            return field.GetValue(null);
+        }
+
+        PropertyInfo property = members[0] as PropertyInfo;
+
+        return property == null ? null : property.GetValue(null);
+    }
+
+    private static object InvokeStringMethod(object target, string methodName, string argument)
+    {
+        MethodInfo method = target?.GetType().GetMethod(methodName, new[] { typeof(string) });
+
+        return method == null ? null : method.Invoke(target, new object[] { argument });
     }
 
     /// <summary>
@@ -99,9 +226,9 @@ public static class GoiInstall
 
     private static string DetectGameDirectory()
     {
-        // Registry is Windows only. Unity runs on macOS and Linux too, where
-        // touching Registry.LocalMachine throws before the try/catch in the
-        // reader could help, because the property is evaluated as an argument.
+        // The registry only exists on Windows, and the folder guesses below are
+        // Windows paths too. Unity runs on macOS and Linux as well, where there is
+        // nothing to look up.
         if (Application.platform != RuntimePlatform.WindowsEditor)
         {
             return null;
@@ -120,12 +247,9 @@ public static class GoiInstall
 
     private static IEnumerable<string> EnumerateCandidates()
     {
-        // Steam is a 32 bit app, so its keys land in the WOW6432Node redirect on
-        // 64 bit Windows. The plain path is tried too, which covers 32 bit
-        // systems and installs that registered themselves natively.
         string fromUninstall =
-            ReadRegistryString(Registry.LocalMachine, $@"SOFTWARE\WOW6432Node\{UninstallKeyPath}", "InstallLocation")
-            ?? ReadRegistryString(Registry.LocalMachine, UninstallKeyPath, "InstallLocation");
+            ReadRegistryString(LocalMachineHive, UninstallKeyPath, "InstallLocation")
+            ?? ReadRegistryString(LocalMachineHive, UninstallKeyPath32, "InstallLocation");
 
         if (!string.IsNullOrEmpty(fromUninstall))
         {
@@ -133,8 +257,8 @@ public static class GoiInstall
         }
 
         string steamPath =
-            ReadRegistryString(Registry.CurrentUser, $@"SOFTWARE\WOW6432Node\{SteamKeyPath}", "SteamPath")
-            ?? ReadRegistryString(Registry.CurrentUser, SteamKeyPath, "SteamPath");
+            ReadRegistryString(CurrentUserHive, SteamKeyPath, "SteamPath")
+            ?? ReadRegistryString(CurrentUserHive, SteamKeyPath32, "SteamPath");
 
         if (!string.IsNullOrEmpty(steamPath))
         {

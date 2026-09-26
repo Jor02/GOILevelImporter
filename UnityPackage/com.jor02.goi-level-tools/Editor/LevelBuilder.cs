@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,14 +18,35 @@ public static class LevelBuilder
     /// <summary>
     /// Builds the level bundle and writes it to outputPath. Reports failures via dialogs and logs.
     /// </summary>
-    public static void Build(CustomLevelObject level, string outputPath)
+    public static bool Build(CustomLevelObject level, string outputPath)
     {
+        return TryBuild(level, outputPath, showDialogs: true, revealInFinder: true);
+    }
+
+    public static bool TryBuild(CustomLevelObject level, string outputPath, bool showDialogs, bool revealInFinder)
+    {
+        string versionProblem = GetUnityVersionProblem();
+
+        if (versionProblem != null)
+        {
+            Debug.LogWarning(versionProblem);
+
+            if (showDialogs && !EditorUtility.DisplayDialog("Unity Version Mismatch", versionProblem, "Build Anyway", "Cancel"))
+            {
+                return false;
+            }
+        }
+
         var scenePaths = GetValidScenePaths(level, out var skipped);
 
         if (scenePaths.Length == 0)
         {
-            EditorUtility.DisplayDialog("Build Failed", "This level has no valid scenes assigned.", "OK");
-            return;
+            if (showDialogs)
+            {
+                EditorUtility.DisplayDialog("Build Failed", "This level has no valid scenes assigned.", "OK");
+            }
+
+            return false;
         }
 
         string bundleName = SanitizeFileName(
@@ -59,20 +80,28 @@ public static class LevelBuilder
 
             if (manifest == null || !File.Exists(bundlePath))
             {
-                EditorUtility.DisplayDialog(
-                    "Build Failed",
-                    "The build pipeline did not produce a bundle. Check the console for details.",
-                    "OK");
-                return;
+                if (showDialogs)
+                {
+                    EditorUtility.DisplayDialog(
+                        "Build Failed",
+                        "The build pipeline did not produce a bundle. Check the console for details.",
+                        "OK");
+                }
+
+                return false;
             }
 
             GltWriter.Write(level, bundlePath, outputPath);
         }
         catch (Exception e)
         {
-            EditorUtility.DisplayDialog("Build Failed", e.Message, "OK");
+            if (showDialogs)
+            {
+                EditorUtility.DisplayDialog("Build Failed", e.Message, "OK");
+            }
+
             Debug.LogException(e);
-            return;
+            return false;
         }
         finally
         {
@@ -88,7 +117,53 @@ public static class LevelBuilder
         Debug.Log($"Built '{outputPath}'\n" +
                   string.Join("\n", scenePaths.Select(path => $"  - {Path.GetFileName(path)}")));
 
-        EditorUtility.RevealInFinder(outputPath);
+        if (revealInFinder)
+        {
+            EditorUtility.RevealInFinder(outputPath);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Null when the editor and the game share a Unity version, otherwise a
+    /// message explaining why a bundle built here will not load in the game.
+    /// Only the major and minor parts are compared, since Unity keeps bundle
+    /// compatibility across patches of the same version line.
+    /// </summary>
+    public static string GetUnityVersionProblem()
+    {
+        string gameVersion = GoiInstall.GameUnityVersion;
+
+        if (string.IsNullOrEmpty(gameVersion) || SameVersionLine(Application.unityVersion, gameVersion))
+        {
+            return null;
+        }
+
+        string versionLine = string.Join(".", gameVersion.Split('.').Take(2));
+
+        return "This project is open in Unity " + Application.unityVersion + ", but Getting Over It runs Unity " + gameVersion +
+               ". Unity only loads asset bundles built with the same version line, so the game rejects the .glf with " +
+               "'Unable to read header from archive file'. Install Unity " + versionLine +
+               " through Unity Hub and open this project with it before building or testing a level.";
+    }
+
+    /// <summary>
+    /// Compares the major and minor components of two Unity versions. Anything
+    /// unparsable counts as a match so a version string this code does not
+    /// expect never blocks a build.
+    /// </summary>
+    private static bool SameVersionLine(string editorVersion, string gameVersion)
+    {
+        string[] editorParts = editorVersion?.Split('.');
+        string[] gameParts = gameVersion.Split('.');
+
+        if (editorParts == null || editorParts.Length < 2 || gameParts.Length < 2)
+        {
+            return true;
+        }
+
+        return editorParts[0] == gameParts[0] && editorParts[1] == gameParts[1];
     }
 
     /// <summary>
