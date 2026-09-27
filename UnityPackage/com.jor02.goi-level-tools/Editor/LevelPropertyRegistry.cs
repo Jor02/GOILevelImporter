@@ -61,8 +61,8 @@ public static class LevelPropertyRegistry
         new LevelPropertyDef("bgfarplane", "Background Far Plane", "How far the background camera can see. Needs to be huge for the sky.", LevelPropertyType.Float, "2800", "Camera"),
         new LevelPropertyDef("cam", "Camera Mode", "2D uses the game's flat orthographic camera. 3D switches to perspective and also applies the hammer material fix.", LevelPropertyType.Enum, "0", "Camera", new[] { "2D", "3D" }, new[] { "0", "1" }),
         new LevelPropertyDef("fog", "Fog Tint", "Tint the level fog. Unticked leaves fog off.", LevelPropertyType.Color, "", "World"),
-        new LevelPropertyDef("sky", "Replace Sky", "Keeps the level's own sky instead of the game's clouds and skysphere.", LevelPropertyType.Flag, "", "World"),
-        new LevelPropertyDef("lighting", "Replace Lighting", "Flattens the ambient lighting so the level's own lights carry the scene.", LevelPropertyType.Flag, "", "World"),
+        new LevelPropertyDef("sky", "Replace Sky", "Keeps the level's own sky instead of the game's clouds and skysphere.", LevelPropertyType.Flag, "r", "World"),
+        new LevelPropertyDef("lighting", "Replace Lighting", "Flattens the ambient lighting so the level's own lights carry the scene.", LevelPropertyType.Flag, "r", "World"),
         new LevelPropertyDef("shadow", "Hide Shadow", "Hides the fake blob shadow attached to the hammer tip.", LevelPropertyType.Bool, "0", "World"),
         new LevelPropertyDef("hammermat", "Fix Hammer Material", "Swaps the hammer mesh to the Standard shader. Forced on in 3D camera mode.", LevelPropertyType.Bool, "0", "World"),
     };
