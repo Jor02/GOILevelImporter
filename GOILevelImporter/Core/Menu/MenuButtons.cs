@@ -33,7 +33,6 @@ namespace GOILevelImporter.Core.Menu
             Button btn = tmpButton.GetComponent<Button>();
             btn.onClick = new Button.ButtonClickedEvent();
             btn.onClick.AddListener(uAction);
-            //btn.onClick.AddListener(() => StartCoroutine(LevelLoader.Instance.BeginLoadLevel(path, (ulong)HeaderSize)));
 
             return tmpButton.transform;
         }
