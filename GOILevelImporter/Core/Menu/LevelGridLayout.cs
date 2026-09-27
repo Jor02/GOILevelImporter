@@ -6,11 +6,12 @@ namespace GOILevelImporter.Core.Menu
     [RequireComponent(typeof(GridLayoutGroup))]
     internal class LevelGridLayout : MonoBehaviour
     {
-        public int Columns = 4;
+        private int columns = 4;
 
-        public float CardPadding = 16f;
-        public float ThumbnailAspect = 500f / 278.95f;
-        public float NameStripHeight = 96f;
+
+        private float cardPadding = 16f;
+        private float thumbnailAspect = 500f / 278.95f;
+        private float nameStripHeight = 96f;
 
         private GridLayoutGroup grid;
         private RectTransform rect;
@@ -35,6 +36,17 @@ namespace GOILevelImporter.Core.Menu
             Recalculate();
         }
 
+        public void Configure(int columnCount, float cardPadding, float thumbnailAspect, float nameStripHeight)
+        {
+            columns = columnCount;
+            this.cardPadding = cardPadding;
+            this.thumbnailAspect = thumbnailAspect;
+            this.nameStripHeight = nameStripHeight;
+
+            appliedWidth = -1f;
+            Recalculate();
+        }
+
         private void Recalculate()
         {
             if (grid == null) return; // can fire before Awake on the very first pass
@@ -43,14 +55,14 @@ namespace GOILevelImporter.Core.Menu
             if (width <= 0f || Mathf.Approximately(width, appliedWidth)) return;
             appliedWidth = width;
 
-            int columns = Mathf.Max(1, Columns);
-            grid.constraintCount = columns;
+            int columnCount = Mathf.Max(1, columns);
+            grid.constraintCount = columnCount;
 
-            float usableWidth = width - grid.padding.left - grid.padding.right - grid.spacing.x * (columns - 1);
-            float cellWidth = usableWidth / columns;
+            float usableWidth = width - grid.padding.left - grid.padding.right - grid.spacing.x * (columnCount - 1);
+            float cellWidth = usableWidth / columnCount;
 
-            float thumbnailHeight = (cellWidth - CardPadding * 2f) / ThumbnailAspect;
-            float cellHeight = CardPadding * 2f + thumbnailHeight + NameStripHeight;
+            float thumbnailHeight = (cellWidth - cardPadding * 2f) / thumbnailAspect;
+            float cellHeight = cardPadding * 2f + thumbnailHeight + nameStripHeight;
 
             grid.cellSize = new Vector2(cellWidth, cellHeight);
         }

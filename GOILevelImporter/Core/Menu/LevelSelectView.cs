@@ -113,10 +113,7 @@ namespace GOILevelImporter.Core.Menu
             // width. This locks the row to Columns cards and keeps recalculating
             // the cell size to fill whatever width the level list actually has.
             LevelGridLayout columns = content.gameObject.AddComponent<LevelGridLayout>();
-            columns.Columns = Columns;
-            columns.CardPadding = CardPadding;
-            columns.ThumbnailAspect = ThumbnailAspect;
-            columns.NameStripHeight = CardNameStrip;
+            columns.Configure(Columns, CardPadding, ThumbnailAspect, CardNameStrip);
 
             BuildLevelButtonTemplate(content);
         }
@@ -135,8 +132,11 @@ namespace GOILevelImporter.Core.Menu
             layout.childAlignment = TextAnchor.UpperCenter;
             layout.childControlWidth = true;
             layout.childControlHeight = false;
+
+            // The thumbnail keeps the height its AspectRatioFitter gives it, so it's the
+            // name strip that takes up whatever height is left over in the card.
             layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = false;
+            layout.childForceExpandHeight = true;
 
             RectTransform thumbnail = UiFactory.Point("Thumbnail", button);
             UiFactory.AddImage(thumbnail, UiAssets.MissingThumb, Color.white, Image.Type.Simple, false, false);
@@ -144,6 +144,8 @@ namespace GOILevelImporter.Core.Menu
             // Recomputes the thumbnail's height from whatever width the layout
             // group above gives it, so the image never gets stretched off its
             // aspect ratio the way the old fixed-height box used to.
+            UiFactory.Sizing(thumbnail, flexibleHeight: 0f);
+
             AspectRatioFitter fitter = thumbnail.gameObject.AddComponent<AspectRatioFitter>();
             fitter.aspectMode = AspectRatioFitter.AspectMode.WidthControlsHeight;
             fitter.aspectRatio = ThumbnailAspect;
@@ -151,11 +153,17 @@ namespace GOILevelImporter.Core.Menu
             RectTransform textArea = UiFactory.Point("TextArea", button);
             textArea.sizeDelta = new Vector2(0f, CardNameStrip);
 
+            // Whatever height the thumbnail doesn't claim goes to the name strip. Without
+            // that the remainder pools at the bottom of the card, leaving the title high in
+            // a gap rather than centered under the thumbnail.
+            UiFactory.Sizing(textArea, preferredHeight: CardNameStrip, flexibleHeight: 1f);
+
             RectTransform label = UiFactory.Stretch("Label", textArea);
             TextMeshProUGUI levelLabel = UiFactory.Label(label, string.Empty, UiFactory.CardTitle);
             levelLabel.overflowMode = TextOverflowModes.Overflow;
 
             button.gameObject.SetActive(false);
+            button.gameObject.AddComponent<CardTitleCentering>();
         }
 
         public static ColorBlock CardColorBlock(bool isSelected)
@@ -303,14 +311,14 @@ namespace GOILevelImporter.Core.Menu
 
         private const float CardPadding = 16f;
         private const float ThumbnailAspect = 500f / 278.95f;
-        private const float CardNameStrip = 96f;
+        private const float CardNameStrip = 56f;
         private const float CardSpacing = 6.75f;
 
         // How many level cards fit side by side. The grid recomputes each card's
         // width - and, from that, its height, to keep the thumbnail's aspect ratio -
         // to fill the level list at exactly this many columns, however wide the
         // level list area turns out to be.
-        private const int Columns = 3;
+        private const int Columns = 4;
 
         // How far the cut corner reaches in, in UI units. Bigger panels get a bigger cut
         // so the accent stays proportionate; small buttons get a subtle one.

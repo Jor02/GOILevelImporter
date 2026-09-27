@@ -292,7 +292,7 @@ namespace GOILevelImporter.Core.Menu
         public static readonly TextStyle Heading = new TextStyle(44f, FontStyles.Bold, 16f, 48f, TextAlignmentOptions.Center);
         public static readonly TextStyle ButtonLabel = new TextStyle(30f, FontStyles.Bold, 10f, 34f, TextAlignmentOptions.Center);
         public static readonly TextStyle DarkButtonLabel = new TextStyle(30f, FontStyles.Bold, 10f, 34f, TextAlignmentOptions.Center, true, Color.black);
-        public static readonly TextStyle CardTitle = new TextStyle(26f, FontStyles.Bold, 12f, 30f, TextAlignmentOptions.TopLeft);
+        public static readonly TextStyle CardTitle = new TextStyle(26f, FontStyles.Bold, 12f, 30f, TextAlignmentOptions.Center);
         public static readonly TextStyle SidebarHeading = new TextStyle(34f, FontStyles.Bold, 14f, 38f, TextAlignmentOptions.TopLeft);
         public static readonly TextStyle SidebarSubheading = new TextStyle(24f, FontStyles.Normal, 12f, 28f, TextAlignmentOptions.TopLeft, true, new Color(1f, 1f, 1f, 0.7f));
         public static readonly TextStyle SidebarBody = new TextStyle(22f, FontStyles.Normal, 12f, 24f, TextAlignmentOptions.TopLeft);
