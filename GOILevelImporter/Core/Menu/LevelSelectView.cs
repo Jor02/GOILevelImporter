@@ -164,6 +164,10 @@ namespace GOILevelImporter.Core.Menu
             TextMeshProUGUI levelLabel = UiFactory.Label(label, string.Empty, UiFactory.CardTitle);
             levelLabel.overflowMode = TextOverflowModes.Overflow;
 
+            RectTransform errorIcon = UiFactory.Node("ErrorIcon", textArea, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-6f, 0f), new Vector2(CardErrorIconSize, CardErrorIconSize));
+            UiFactory.AddImage(errorIcon, UiAssets.ErrorIcon, Color.white, Image.Type.Simple, true, false);
+            errorIcon.gameObject.SetActive(false);
+
             button.gameObject.SetActive(false);
             button.gameObject.AddComponent<CardTitleCentering>();
         }
@@ -314,6 +318,7 @@ namespace GOILevelImporter.Core.Menu
         private const float CardPadding = 16f;
         private const float ThumbnailAspect = 500f / 278.95f;
         private const float CardNameStrip = 56f;
+        internal const float CardErrorIconSize = 28f;
         private const float CardSpacing = 6.75f;
 
         // How many level cards fit side by side. The grid recomputes each card's

@@ -42,7 +42,7 @@ namespace GOILevelImporter.Core.Menu
 
         public void OKClick()
         {
-            errors.RemoveAt(0);
+            if (errors.Count > 0) errors.RemoveAt(0);
 
             gameObject.SetActive(false);
             contentObject.SetActive(true);

@@ -104,9 +104,9 @@ namespace GOILevelImporter.Core.Menu
 
                 levelButtons[i + 1] = Object.Instantiate(screen.templateLevelButton, screen.content).GetComponent<LevelButton>().Init(
                     response.LevelPath, response.LevelName, response.Author, response.Description,
-                    i + 1, response.Legacy, response.Thumbnail, SelectLevel, response.HeaderSize, response.Metadata);
-
-                if (response.LevelPath == LevelSelectionState.SavedLevelPath) selectedMap = i + 1;
+                    i + 1, response.Legacy, response.Thumbnail, SelectLevel, response.HeaderSize, response.Metadata,
+                    response.Incompatible, response.BuiltWithVersion);
+                if (!response.Incompatible && response.LevelPath == LevelSelectionState.SavedLevelPath) selectedMap = i + 1;
             }
 
             levelButtons[selectedMap].GetComponent<Button>().onClick.Invoke();
@@ -114,12 +114,18 @@ namespace GOILevelImporter.Core.Menu
 
         private void SelectLevel(int id)
         {
+            LevelButton picked = levelButtons[id];
+
+            if (picked.incompatible)
+            {
+                LoadingError.Instance.AddError(picked.IncompatibleReason, true);
+                return;
+            }
+
             foreach (LevelButton button in levelButtons)
             {
                 button.SetSelected(button.id == id);
             }
-
-            LevelButton picked = levelButtons[id];
 
             levelScreen.sidebarThumbnail.sprite = picked.thumbnail;
             levelScreen.sidebarText.text = picked.description;

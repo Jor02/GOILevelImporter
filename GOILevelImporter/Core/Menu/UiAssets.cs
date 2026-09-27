@@ -12,6 +12,7 @@ namespace GOILevelImporter.Core.Menu
         public static Sprite TempThumb { get; private set; }
         public static Sprite RefreshIcon { get; private set; }
         public static Sprite WarningIcon { get; private set; }
+        public static Sprite ErrorIcon { get; private set; }
 
         public static Texture2D DefaultThumbTexture { get; private set; }
 
@@ -28,6 +29,7 @@ namespace GOILevelImporter.Core.Menu
             TempThumb = LoadSprite("TempThumb");
             RefreshIcon = LoadSprite("refresh", mipmaps: true);
             WarningIcon = LoadSprite("Warning", mipmaps: true);
+            ErrorIcon = LoadSprite("Error", mipmaps: true);
         }
 
         private static Sprite LoadSprite(string name, bool mipmaps = false)

@@ -18,13 +18,19 @@ namespace GOILevelImporter.Core.Menu
         public int id;
         public ulong headerSize;
         public bool hasThumbnail;
+        public bool incompatible;
+        public string builtWithVersion;
         public Sprite thumbnail;
         public Core.LevelMetadata metadata;
 
-        public LevelButton Init(string levelPath, string levelName, string author, string description, int id, bool legacy, Texture2D thumbnail, Action<int> onClickEvent, long headerSize, Core.LevelMetadata metadata)
+        public LevelButton Init(string levelPath, string levelName, string author, string description, int id, bool legacy, Texture2D thumbnail, Action<int> onClickEvent, long headerSize, Core.LevelMetadata metadata, bool incompatible = false, string builtWithVersion = null)
         {
             TextMeshProUGUI levelLabel = transform.Find("TextArea/Label").GetComponent<TextMeshProUGUI>();
             levelLabel.text = levelName;
+
+            this.incompatible = incompatible;
+            this.builtWithVersion = builtWithVersion;
+            SetErrorBadge(incompatible);
 
             hasThumbnail = (thumbnail != null);
             if (!legacy) {
@@ -62,5 +68,20 @@ namespace GOILevelImporter.Core.Menu
             Button button = GetComponent<Button>();
             button.colors = LevelSelectView.CardColorBlock(isSelected);
         }
+
+        /// <summary>
+        /// Shows or hides the red badge on the card.
+        /// </summary>
+        private void SetErrorBadge(bool show)
+        {
+            Transform badge = transform.Find("TextArea/ErrorIcon");
+            if (badge != null) badge.gameObject.SetActive(show);
+        }
+
+        public string IncompatibleReason =>
+            "'" + levelName + "' was built with Unity " +
+            (string.IsNullOrEmpty(builtWithVersion) ? "a different version" : builtWithVersion) +
+            ", but this game runs Unity " + Application.unityVersion +
+            ".\n\nRebuild the level with Unity " + Application.unityVersion + " to play it.";
     }
 }

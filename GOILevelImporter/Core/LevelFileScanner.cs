@@ -25,6 +25,8 @@ namespace GOILevelImporter.Core
             public long HeaderSize;
             public string LevelPath;
             public bool Legacy;
+            public bool Incompatible;
+            public string BuiltWithVersion;
             public Texture2D Thumbnail;
             public LevelMetadata Metadata;
 
@@ -36,12 +38,14 @@ namespace GOILevelImporter.Core
                 Author = "";
                 Description = "";
                 Legacy = false;
+                Incompatible = false;
+                BuiltWithVersion = null;
                 Thumbnail = null;
                 HeaderSize = 0;
                 Metadata = default;
             }
 
-            public Response(ResponseType message, bool legacy, string levelPath, LevelMetadata metadata, Texture2D thumbnail, long headerSize)
+            public Response(ResponseType message, bool legacy, string levelPath, LevelMetadata metadata, Texture2D thumbnail, long headerSize, string builtWithVersion = null)
             {
                 Message = message;
 
@@ -54,6 +58,8 @@ namespace GOILevelImporter.Core
                 Legacy = legacy;
                 Thumbnail = thumbnail;
                 HeaderSize = headerSize;
+                BuiltWithVersion = builtWithVersion;
+                Incompatible = !IsCompatibleVersion(builtWithVersion);
             }
 
             public enum ResponseType
@@ -155,8 +161,11 @@ namespace GOILevelImporter.Core
             if (props.TryGetValue("credit", out var credit)) author = credit;
             if (props.TryGetValue("description", out var legacyDescription)) description = legacyDescription;
 
+            // A legacy level basically an asset bundle so the unity version is at offset 0.
+            string builtWith = ReadBundleUnityVersion(path, 0);
+
             var metadata = new LevelMetadata(levelName, author, description, true, false, null, 0, props);
-            return new Response(Response.ResponseType.success, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), 0);
+            return new Response(Response.ResponseType.success, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), 0, builtWith);
         }
 
         /// <summary>
@@ -185,30 +194,32 @@ namespace GOILevelImporter.Core
 
         private static Response ReadGlfLevel(string path)
         {
-            using Stream stream = new FileStream(path, FileMode.Open);
-            using var reader = new BinaryReader(stream);
+            long headerSize;
+            LevelMetadata metadata;
 
-            if (!reader.ReadBytes(5).SequenceEqual(GlfHeader))
+            using (Stream stream = new FileStream(path, FileMode.Open))
+            using (var reader = new BinaryReader(stream))
             {
-                return new Response(Response.ResponseType.wrongFileType);
+                if (!reader.ReadBytes(5).SequenceEqual(GlfHeader))
+                {
+                    return new Response(Response.ResponseType.wrongFileType);
+                }
+
+                int metaDataLength = reader.ReadInt32();
+                byte[] compressedMetaData = reader.ReadBytes(metaDataLength);
+                headerSize = stream.Position;
+
+                byte[] decompressedMetaData = SevenZip.Compression.LZMA.SevenZipHelper.Decompress(compressedMetaData);
+                metadata = DecodeGlfMetadata(decompressedMetaData);
             }
 
-            int metaDataLength = reader.ReadInt32();
-            byte[] compressedMetaData = reader.ReadBytes(metaDataLength);
-            long headerSize = stream.Position;
+            string builtWith = ReadBundleUnityVersion(path, headerSize);
 
-            byte[] decompressedMetaData = SevenZip.Compression.LZMA.SevenZipHelper.Decompress(compressedMetaData);
-            LevelMetadata metadata = DecodeGlfMetadata(decompressedMetaData);
-
-            return new Response(Response.ResponseType.success, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), headerSize);
+            return new Response(Response.ResponseType.success, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), headerSize, builtWith);
         }
 
         /// <summary>
-        /// Reads the Unity version that built the asset bundle sitting at offset in
-        /// a .glf. Returns null when nothing readable is there.
-        ///
-        /// Used to explain a bundle the game's Unity refused to open, which is
-        /// almost always a bundle built by a different Unity version line.
+        /// Reads the Unity version that built the asset bundle sitting at a given offset.
         /// </summary>
         public static string ReadBundleUnityVersion(string path, long offset)
         {
@@ -234,6 +245,33 @@ namespace GOILevelImporter.Core
             {
                 return null;
             }
+        }
+
+        public static bool IsCompatibleVersion(string builtWith)
+        {
+            if (!TryParseVersionLine(builtWith, out int major, out int minor)) return true;
+            if (!TryParseVersionLine(Application.unityVersion, out int playerMajor, out int playerMinor)) return true;
+
+            return major == playerMajor && minor == playerMinor;
+        }
+
+        private static bool TryParseVersionLine(string version, out int major, out int minor)
+        {
+            major = 0;
+            minor = 0;
+
+            if (string.IsNullOrWhiteSpace(version)) return false;
+
+            string[] parts = version.Split('.');
+            if (parts.Length < 2) return false;
+
+            if (!int.TryParse(parts[0], out major)) return false;
+
+            string patch = parts[1];
+            int suffix = patch.IndexOfAny(new[] { 'f', 'p', 'b', 'a', 'x' });
+            if (suffix >= 0) patch = patch.Substring(0, suffix);
+
+            return int.TryParse(patch, out minor);
         }
 
         private static string ReadNullTerminatedString(Stream stream)
