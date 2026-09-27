@@ -20,6 +20,7 @@ public class CustomLevelObjectEditor : Editor
     private int pickerControlID = -1;
 
     private bool showValidationErrors;
+    private bool showLevelProperties;
 
     private SerializedProperty levelNameProp;
     private SerializedProperty authorProp;
@@ -108,7 +109,8 @@ public class CustomLevelObjectEditor : Editor
             "LevelName", 
             "Author", 
             "Description",
-            "LevelScenes"
+            "LevelScenes",
+            "Settings"
         );
 
         serializedObject.ApplyModifiedProperties();
@@ -169,6 +171,10 @@ public class CustomLevelObjectEditor : Editor
 
         EditorGUILayout.Space(4);
 
+        DrawLevelPropertiesFoldout();
+
+        EditorGUILayout.Space(4);
+
         EditorGUILayout.LabelField("Scenes", EditorStyles.boldLabel);
 
         sceneList.DoLayoutList();
@@ -186,6 +192,216 @@ public class CustomLevelObjectEditor : Editor
         EditorGUILayout.Space(4);
 
         EditorGUILayout.EndVertical();
+    }
+
+    private void DrawLevelPropertiesFoldout()
+    {
+        var level = (CustomLevelObject)target;
+
+        EditorGUI.indentLevel++;
+        showLevelProperties = EditorGUILayout.Foldout(showLevelProperties, "Level Properties", true);
+        EditorGUI.indentLevel--;
+
+        if (!showLevelProperties)
+            return;
+
+        // 3D camera mode forces the hammer fix in the build, so the toggle
+        // shows checked and locked while it is active.
+        bool forceHammerFix = level.GetSetting("cam", "0") == "1";
+
+        EditorGUI.indentLevel++;
+        string lastCategory = null;
+        foreach (var def in LevelPropertyRegistry.Properties)
+        {
+            // New group gets a spaced bold header, the first one hugs the foldout.
+            if (def.Category != lastCategory)
+            {
+                if (lastCategory != null)
+                    EditorGUILayout.Space(6);
+
+                if (!string.IsNullOrEmpty(def.Category))
+                    EditorGUILayout.LabelField(def.Category, EditorStyles.boldLabel);
+
+                lastCategory = def.Category;
+            }
+
+            if (def.Key == "hammermat" && forceHammerFix)
+                DrawLockedHammerFixField(level, def);
+            else
+                DrawLevelPropertyField(level, def);
+        }
+        EditorGUI.indentLevel--;
+    }
+
+    private void DrawLevelPropertyField(CustomLevelObject level, LevelPropertyDef def)
+    {
+        string current = level.GetSetting(def.Key, def.DefaultValue);
+        string next = current;
+
+        var label = new GUIContent(def.Label, def.Tooltip);
+
+        // Fixed label column with a field that shrinks to zero, so slim
+        // inspectors clip the field instead of pushing it off screen.
+        float labelWidth = Mathf.Min(EditorGUIUtility.labelWidth, EditorGUIUtility.currentViewWidth * 0.45f);
+        Rect row = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight);
+        const float infoWidth = 18f;
+        Rect infoRect = new Rect(row.x, row.y, infoWidth, row.height);
+        Rect labelRect = new Rect(row.x + infoWidth, row.y, Mathf.Max(0, labelWidth - infoWidth), row.height);
+        Rect fieldRect = new Rect(row.x + labelWidth, row.y, Mathf.Max(0, row.width - labelWidth), row.height);
+
+        if (!string.IsNullOrEmpty(def.Tooltip))
+        {
+            var info = EditorGUIUtility.IconContent("_Help");
+            float iconSize = Mathf.Min(16f, infoRect.height);
+            Rect iconRect = new Rect(
+                infoRect.x + 1f,
+                infoRect.y + (infoRect.height - iconSize) / 2f,
+                iconSize,
+                iconSize);
+            GUI.DrawTexture(iconRect, info.image);
+            GUI.Label(infoRect, new GUIContent(string.Empty, def.Tooltip));
+        }
+
+        GUI.Label(labelRect, new GUIContent(def.Label, def.Tooltip));
+
+        switch (def.Type)
+        {
+            case LevelPropertyType.Flag:
+                bool flagOn = current == "r";
+                bool nextFlag = EditorGUI.Toggle(fieldRect, GUIContent.none, flagOn);
+                next = nextFlag ? "r" : string.Empty;
+                break;
+            case LevelPropertyType.Bool:
+                bool boolOn = current == "1" || current.Equals("true", System.StringComparison.OrdinalIgnoreCase);
+                bool nextBool = EditorGUI.Toggle(fieldRect, GUIContent.none, boolOn);
+                next = nextBool ? "1" : "0";
+                break;
+            case LevelPropertyType.Int:
+                if (!int.TryParse(current, out int intValue))
+                    intValue = 0;
+                if (int.TryParse(def.DefaultValue, out int defaultInt) && string.IsNullOrEmpty(current))
+                    intValue = defaultInt;
+                next = EditorGUI.IntField(fieldRect, GUIContent.none, intValue).ToString();
+                break;
+            case LevelPropertyType.Float:
+                if (!float.TryParse(current, out float floatValue))
+                    floatValue = 0f;
+                if (float.TryParse(def.DefaultValue, out float defaultFloat) && string.IsNullOrEmpty(current))
+                    floatValue = defaultFloat;
+                next = EditorGUI.FloatField(fieldRect, GUIContent.none, floatValue).ToString("R");
+                break;
+            case LevelPropertyType.Enum:
+                next = DrawEnumField(def, current, fieldRect);
+                break;
+            case LevelPropertyType.Color:
+                next = DrawColorField(current, fieldRect);
+                break;
+            default:
+                next = EditorGUI.TextField(fieldRect, GUIContent.none, current ?? string.Empty);
+                break;
+        }
+
+        if (next != current)
+        {
+            Undo.RecordObject(level, "Edit Level Property");
+            level.SetSetting(def.Key, next);
+            EditorUtility.SetDirty(level);
+        }
+    }
+
+    // Dropdown for enum defs. Unknown stored values fall back to the default
+    // index so legacy hand edited assets still open sanely.
+    private string DrawEnumField(LevelPropertyDef def, string current, Rect fieldRect)
+    {
+        int selected = 0;
+        for (int i = 0; i < def.EnumValues.Length; i++)
+        {
+            if (def.EnumValues[i] == current)
+                selected = i;
+        }
+
+        int picked = EditorGUI.Popup(fieldRect, selected, def.EnumLabels);
+        return def.EnumValues.Length > picked ? def.EnumValues[picked] : current;
+    }
+
+    // Fog color plus enable toggle. Stored as RRGGBBAA hex, empty means off.
+    // Alpha maps to the density byte: 0 is clear, 255 is the 0.05 default.
+    private string DrawColorField(string current, Rect fieldRect)
+    {
+        bool enabled = !string.IsNullOrEmpty(current);
+
+        const float toggleWidth = 18f;
+        Rect toggleRect = new Rect(fieldRect.x, fieldRect.y, toggleWidth, fieldRect.height);
+
+        if (!enabled)
+        {
+            bool turnedOn = EditorGUI.Toggle(toggleRect, GUIContent.none, false);
+            return turnedOn ? DefaultFogValue() : string.Empty;
+        }
+
+        if (!TryParseFog(current, out UnityEngine.Color color))
+            color = new UnityEngine.Color(1f, 1f, 1f, DefaultFogDensity / MaxFogDensity);
+
+        Rect pickerRect = new Rect(fieldRect.x + toggleWidth, fieldRect.y, Mathf.Max(0, fieldRect.width - toggleWidth), fieldRect.height);
+
+        bool nextEnabled = EditorGUI.Toggle(toggleRect, GUIContent.none, true);
+        if (!nextEnabled)
+            return string.Empty;
+
+        UnityEngine.Color nextColor = EditorGUI.ColorField(pickerRect, GUIContent.none, color, true, true, false);
+        return ToFogString(nextColor);
+    }
+
+    // Loader density for a fully opaque picker. Matches the old fallback.
+    private const float MaxFogDensity = 0.05f;
+    private const float DefaultFogDensity = 0.013f;
+
+    private static string DefaultFogValue() =>
+        ToFogString(new UnityEngine.Color(1f, 1f, 1f, DefaultFogDensity / MaxFogDensity));
+
+    // Parses RRGGBB (default density) or RRGGBBAA (alpha scaled to 0..0.05).
+    private static bool TryParseFog(string value, out UnityEngine.Color color)
+    {
+        color = UnityEngine.Color.white;
+
+        string hex = value.TrimStart('#');
+        if (hex.Length != 6 && hex.Length != 8)
+            return false;
+
+        try
+        {
+            float r = System.Convert.ToByte(hex.Substring(0, 2), 16) / 255f;
+            float g = System.Convert.ToByte(hex.Substring(2, 2), 16) / 255f;
+            float b = System.Convert.ToByte(hex.Substring(4, 2), 16) / 255f;
+            float density = hex.Length == 8
+                ? System.Convert.ToByte(hex.Substring(6, 2), 16) / 255f * MaxFogDensity
+                : DefaultFogDensity;
+
+            color = new UnityEngine.Color(r, g, b, Mathf.Clamp01(density / MaxFogDensity));
+            return true;
+        }
+        catch (System.Exception)
+        {
+            return false;
+        }
+    }
+
+    private static string ToFogString(UnityEngine.Color color)
+    {
+        var opaque = new UnityEngine.Color(color.r, color.g, color.b, 1f);
+        byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(color.a) * 255f);
+        return ColorUtility.ToHtmlStringRGB(opaque) + alpha.ToString("X2");
+    }
+
+    // Checked and grayed out while 3D is on. The saved value is left alone
+    // so flipping back to 2D restores whatever the user had before.
+    private void DrawLockedHammerFixField(CustomLevelObject level, LevelPropertyDef def)
+    {
+        var label = new GUIContent(def.Label, def.Tooltip + " (Forced on by 3D camera mode.)");
+        using (new EditorGUI.DisabledScope(true))
+        {
+            EditorGUILayout.Toggle(label, true);
+        }
     }
 
     private void DrawLevelValidation()

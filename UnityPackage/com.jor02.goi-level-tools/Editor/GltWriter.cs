@@ -65,6 +65,23 @@ public static class GltWriter
             { "ThumbnailFormat", ((byte)TextureFormat.RGBA32).ToString() }
         };
 
+        // Custom properties from the level asset. Skip reserved keys so the
+        // fixed fields above always win. Fill in registry defaults for keys
+        // the asset never saved, so a fresh asset still builds with them.
+        foreach (var def in LevelPropertyRegistry.Properties)
+        {
+            if (props.ContainsKey(def.Key))
+                continue;
+            props[def.Key] = level.GetSetting(def.Key, def.DefaultValue) ?? string.Empty;
+        }
+
+        foreach (var entry in level.ToSettingsDictionary())
+        {
+            if (props.ContainsKey(entry.Key))
+                continue;
+            props[entry.Key] = entry.Value ?? string.Empty;
+        }
+
         using (var stream = new MemoryStream())
         using (var writer = new BinaryWriter(stream))
         {
