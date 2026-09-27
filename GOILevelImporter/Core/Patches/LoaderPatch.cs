@@ -16,7 +16,7 @@ namespace GOILevelImporter.Core.Patches
             if (___loadFinished && ___safeToClick && !LevelSelectionState.IsDefault)
             {
                 LevelTransitionScreen.Instance.FadeOut();
-                LevelLoader.Instance.BeginLoadLevel(LevelSelectionState.LevelPath, LevelSelectionState.Legacy, LevelSelectionState.LevelHeaderSize);
+                LevelLoader.Instance.BeginLoadLevel();
             }
 		}
     }

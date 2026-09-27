@@ -39,7 +39,7 @@ namespace GOILevelImporter.Components
 		private void OnTriggerEnter2D(Collider2D col)
 		{
 			//Triggers in the scene being torn down can fire while a level loads.
-			if (LevelLoader.Loading) return;
+			if (LevelLoader.IsBusy) return;
 
 			if ((col.gameObject.layer != 8 && Detect == DetectMode.PlayerOnly) || (col.gameObject.layer == 8 && Detect == DetectMode.PropsOnly))
 			{
@@ -107,9 +107,7 @@ namespace GOILevelImporter.Components
 					TriggerEvent.Invoke();
 					return;
 				case Trigger.SwitchScene:
-					// Save the sub-scene so the reload below resumes in it, then
-					// restart the level through LevelLoader so Async is set and
-					// OnSceneLoaded doesn't start a second, parallel load.
+					// Save the sub-scene so the reload below resumes in it
 					LevelSelectionState.SetPendingScene(anim, LevelLoader.currentBundlePath);
 
 					LevelLoader.Instance.Reload(true);

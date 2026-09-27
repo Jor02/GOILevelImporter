@@ -10,8 +10,7 @@ namespace GOILevelImporter.Core.Patches
     {
         static bool Prefix()
         {
-            if (LevelLoader.Async) return false;
-            return true;
+            return !LevelLoader.LoadingMian;
         }
     }
 }

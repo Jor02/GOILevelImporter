@@ -10,13 +10,35 @@ namespace GOILevelImporter.Core
     /// </summary>
     class LevelLoader : MonoBehaviour
     {
+        public enum LoadState
+        {
+            Idle,
+            BundleReady,
+            LoadingMian,
+            LoadingLevel,
+            Playing
+        }
+
         public static LevelLoader Instance { get; private set; }
-        public static bool Playing { get; private set; }
-        public static bool Legacy { get; private set; }
-        public static bool Async { get; set; }
-        public static bool Loading { get; set; }
-        public static bool HasCustomSpline { get; set; }
-        public static AssetBundle currectBundle { get; private set; }
+        public static LoadState State { get; private set; } = LoadState.Idle;
+        public static bool HasCustomSpline { get; private set; }
+
+        /// <summary>
+        /// A level session is open.
+        /// </summary>
+        public static bool Playing => State != LoadState.Idle;
+
+        /// <summary>
+        /// A scene swap is in flight.
+        /// </summary>
+        public static bool IsBusy => State == LoadState.LoadingMian || State == LoadState.LoadingLevel;
+
+        /// <summary>
+        /// We are reloading "Mian" ourselves.
+        /// </summary>
+        public static bool LoadingMian => State == LoadState.LoadingMian;
+
+        public static AssetBundle currentBundle { get; private set; }
         public static string currentBundlePath { get; private set; }
 
         /// <summary>
@@ -54,35 +76,40 @@ namespace GOILevelImporter.Core
         /// </summary>
         public void Reset()
         {
-            if (currectBundle)
+            if (currentBundle)
             {
-                currectBundle.Unload(true);
-                currectBundle = null;
+                currentBundle.Unload(true);
+                currentBundle = null;
             }
 
-            Playing = false;
-            Loading = false;
+            currentBundlePath = string.Empty;
+            State = LoadState.Idle;
             HasCustomSpline = false;
         }
 
-        public void BeginLoadLevel(string path, bool legacy, ulong headerSize)
+        /// <summary>
+        /// Opens the selected level's bundle.
+        /// </summary>
+        public void BeginLoadLevel()
         {
-            if (Playing) return;
+            if (State != LoadState.Idle) return;
 
-            Playing = true;
-            Legacy = legacy;
+            string path = LevelSelectionState.LevelPath;
+            ulong headerSize = LevelSelectionState.LevelHeaderSize;
             currentBundlePath = path;
-            currectBundle = AssetBundle.LoadFromFile(path, 0, headerSize);
+            currentBundle = AssetBundle.LoadFromFile(path, 0, headerSize);
 
-            if (currectBundle == null)
+            if (currentBundle == null)
             {
                 ReportBundleFailure(path, headerSize);
 
                 // Nothing to load, so drop back to "no level started" and let the
                 // game continue into its own scene instead of a botched fade.
-                Playing = false;
                 currentBundlePath = string.Empty;
+                return;
             }
+
+            State = LoadState.BundleReady;
         }
 
         /// <summary>
@@ -105,15 +132,26 @@ namespace GOILevelImporter.Core
         }
 
         /// <summary>
-        /// Waits for an AsyncOperation to finish, then loads the level.
+        /// Deletes the active save slots.
         /// </summary>
-        public void LoadLevelAsync(AsyncOperation loadingOperation) => StartCoroutine(LoadLevelAsync_(loadingOperation));
-        private IEnumerator LoadLevelAsync_(AsyncOperation loadingOperation)
+        public static void WipeSaves()
         {
-            Async = true;
-            while (!loadingOperation.isDone) yield return null;
-            Async = false;
-            StartCoroutine(LoadLevel());
+            PlayerPrefs.DeleteKey("NumSaves");
+            PlayerPrefs.DeleteKey("SaveGame0");
+            PlayerPrefs.DeleteKey("SaveGame1");
+            PlayerPrefs.Save();
+        }
+
+        private static void FreezeWorld()
+        {
+            Time.timeScale = 0;
+            Physics2D.simulationMode = SimulationMode2D.Script;
+        }
+
+        private static void UnfreezeWorld()
+        {
+            Time.timeScale = 1;
+            Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
         }
 
         /// <summary>
@@ -123,7 +161,7 @@ namespace GOILevelImporter.Core
         /// <param name="keepCurrentScene">True to resume in the saved sub-scene</param>
         public void Reload(bool keepCurrentScene = false)
         {
-            if (Loading) return;
+            if (IsBusy) return;
 
             if (!keepCurrentScene)
             {
@@ -131,43 +169,49 @@ namespace GOILevelImporter.Core
             }
 
             Menu.LevelTransitionScreen.Instance.FadeOut();
-            Loading = true;
-            Time.timeScale = 0;
-            Physics2D.simulationMode = SimulationMode2D.Script;
+            State = LoadState.LoadingMian;
+            FreezeWorld();
+            WipeSaves();
 
-            PlayerPrefs.DeleteKey("NumSaves");
-            PlayerPrefs.DeleteKey("SaveGame0");
-            PlayerPrefs.DeleteKey("SaveGame1");
-            PlayerPrefs.Save();
-
-            LoadLevelAsync(SceneManager.LoadSceneAsync("Mian"));
+            var mianLoad = SceneManager.LoadSceneAsync("Mian");
+            StartCoroutine(WaitForBaseScene(mianLoad));
         }
 
+        private IEnumerator WaitForBaseScene(AsyncOperation loadingOperation)
+        {
+            while (!loadingOperation.isDone) yield return null;
+            StartCoroutine(LoadLevel());
+        }
+
+        /// <summary>
+        /// Loads the level's scene additively on top of "Mian" once the base scene is up.
+        /// </summary>
         public IEnumerator LoadLevel()
         {
             // A failed bundle is reported and cleared by BeginLoadLevel, and a
             // bundle without scenes has nothing to show. Both would fault further
-            // down, so stop here and leave the game on its own scene.
-            if (currectBundle == null)
+            // down, so drop the level session and leave the game on its own scene.
+            if (currentBundle == null)
             {
                 Debug.LogWarning("Skipping level load: no bundle is loaded.");
-                Loading = false;
+                Reset();
+                UnfreezeWorld();
                 yield break;
             }
 
-            string[] scenePaths = currectBundle.GetAllScenePaths();
+            string[] scenePaths = currentBundle.GetAllScenePaths();
 
             if (scenePaths.Length == 0)
             {
                 Debug.LogError("Level bundle '" + currentBundlePath + "' holds no scenes.");
-                Loading = false;
+                Reset();
+                UnfreezeWorld();
                 yield break;
             }
 
-            Loading = true;
+            State = LoadState.LoadingLevel;
             yield return new WaitForEndOfFrame();
-            Physics2D.simulationMode = SimulationMode2D.Script;
-            Time.timeScale = 0;
+            FreezeWorld();
 
             var settings = LevelSelectionState.Metadata;
 
@@ -189,7 +233,7 @@ namespace GOILevelImporter.Core
             yield return new WaitForEndOfFrame();
 
             // Bundles built by older versions reference the old mod components, we have to replace these.
-            if (Legacy) ReplaceLegacyComponents();
+            if (LevelSelectionState.Legacy) ReplaceLegacyComponents();
 
             // Levels can bring their own camera path. When one is present the game
             // scripts follow it and the fallback patches stand down.
@@ -197,9 +241,8 @@ namespace GOILevelImporter.Core
                 Object.FindObjectOfType<Components.LevelCameraPath>());
 
             Menu.LevelTransitionScreen.Instance.FadeIn();
-            Time.timeScale = 1;
-            Physics2D.simulationMode = SimulationMode2D.FixedUpdate;
-            Loading = false;
+            UnfreezeWorld();
+            State = LoadState.Playing;
         }
 
         private static void ReplaceLegacyComponents()

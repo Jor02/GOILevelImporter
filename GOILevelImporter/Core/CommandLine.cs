@@ -182,7 +182,7 @@ namespace GOILevelImporter.Core
                 yield break;
             }
 
-            if (response.Message != LevelFileScanner.Response.ResponseType.success)
+            if (response.Message != LevelFileScanner.Response.ResponseType.Success)
             {
                 Debug.LogError("Could not load test level '" + path + "': " + response.Message);
                 yield break;
@@ -226,30 +226,12 @@ namespace GOILevelImporter.Core
 
             Debug.Log("Test level: loading '" + response.LevelPath + "'.");
 
-            // StartGame wiped the saves before it continued, and the level
-            // loader only does that on a restart, so do it here too.
-            PlayerPrefs.DeleteKey("NumSaves");
-            PlayerPrefs.DeleteKey("SaveGame0");
-            PlayerPrefs.DeleteKey("SaveGame1");
-            PlayerPrefs.Save();
+            LevelLoader.WipeSaves();
 
-            // Show the custom loading screen straight away instead of the menu
-            // fade, so the level name and thumbnail are up before the swap.
             PopulateTransitionScreen(response);
             LevelTransitionScreen.Instance.FadeOut();
-
-            // Cut the menu off at the knees: the intro coroutines, the menu audio
-            // and everything drawn over the fade. The Loader scene goes away with
-            // the scene activation below, so nothing here has to be undone.
             SilenceMenu(loader);
-
-            // Same work StartGame would reach through ContinueGame, minus the
-            // click. The bundle has to be open before "Mian" activates, because
-            // the scene load handler starts loading the level from it.
-            LevelLoader.Instance.BeginLoadLevel(response.LevelPath, response.Legacy, (ulong)response.HeaderSize);
-
-            // Allow the "Mian" async load to finish. OnSceneLoaded picks it up
-            // from there and loads the level additively.
+            LevelLoader.Instance.BeginLoadLevel();
             loader.DoStart();
         }
 
@@ -266,16 +248,19 @@ namespace GOILevelImporter.Core
                 return;
             }
 
-            screen.Name.text = response.LevelName;
-            screen.Author.text = string.IsNullOrWhiteSpace(response.Author) ? "" : "By " + response.Author;
-            screen.ThumbnailObject.SetActive(response.Thumbnail != null);
+            LevelMetadata metadata = response.Metadata;
+            Texture2D thumbnail = metadata.GetThumbnail();
 
-            if (response.Thumbnail != null)
+            screen.Name.text = metadata.LevelName;
+            screen.Author.text = string.IsNullOrWhiteSpace(metadata.Author) ? "" : "By " + metadata.Author;
+            screen.ThumbnailObject.SetActive(thumbnail != null);
+
+            if (thumbnail != null)
             {
-                // The scanner decodes to a raw texture, the image wants a sprite.
+                // The scanner decodes to a raw texture while the image wants a sprite.
                 screen.Thumbnail.sprite = Sprite.Create(
-                    response.Thumbnail,
-                    new Rect(0f, 0f, response.Thumbnail.width, response.Thumbnail.height),
+                    thumbnail,
+                    new Rect(0f, 0f, thumbnail.width, thumbnail.height),
                     new Vector2(0.5f, 0.5f));
             }
         }

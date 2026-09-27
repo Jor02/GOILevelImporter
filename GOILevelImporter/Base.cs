@@ -47,10 +47,8 @@ namespace GOILevelImporter
                 LevelLoader.Instance.Reset();
                 StartCoroutine(SetupMenuWithTestLaunch());
             }
-            else if (!LevelLoader.Async && target.name == "Mian" && mode != LoadSceneMode.Additive && !LevelSelectionState.IsDefault)
+            else if (!LevelLoader.LoadingMian && target.name == "Mian" && mode != LoadSceneMode.Additive && !LevelSelectionState.IsDefault)
             {
-                // A restart (not our own additive load) lands back on "Mian"
-                // with no scene queued, so kick off the normal level load.
                 StartCoroutine(LevelLoader.Instance.LoadLevel());
             }
         }

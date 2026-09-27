@@ -92,7 +92,7 @@ namespace GOILevelImporter.Core.Menu
             );
 
             LevelFileScanner.Response[] responses = LevelFileScanner.Scan(LevelLoader.TargetPath);
-            if (!LevelFileScanner.TrySplitResults(responses, out var successfulResponses)) return;
+            LevelFileScanner.SplitResults(responses, out var successfulResponses);
 
             levelButtons = new LevelButton[successfulResponses.Length + 1];
             levelButtons[0] = defaultMap;
@@ -103,8 +103,8 @@ namespace GOILevelImporter.Core.Menu
                 LevelFileScanner.Response response = successfulResponses[i];
 
                 levelButtons[i + 1] = Object.Instantiate(screen.templateLevelButton, screen.content).GetComponent<LevelButton>().Init(
-                    response.LevelPath, response.LevelName, response.Author, response.Description,
-                    i + 1, response.Legacy, response.Thumbnail, SelectLevel, response.HeaderSize, response.Metadata,
+                    response.LevelPath, response.Metadata.LevelName, response.Metadata.Author, response.Metadata.Description,
+                    i + 1, response.Legacy, response.Metadata.GetThumbnail(), SelectLevel, response.HeaderSize, response.Metadata,
                     response.Incompatible, response.BuiltWithVersion);
                 if (!response.Incompatible && response.LevelPath == LevelSelectionState.SavedLevelPath) selectedMap = i + 1;
             }

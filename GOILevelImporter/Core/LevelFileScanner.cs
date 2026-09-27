@@ -19,44 +19,30 @@ namespace GOILevelImporter.Core
         public struct Response
         {
             public ResponseType Message;
-            public string LevelName;
-            public string Author;
-            public string Description;
-            public long HeaderSize;
             public string LevelPath;
+            public long HeaderSize;
             public bool Legacy;
             public bool Incompatible;
             public string BuiltWithVersion;
-            public Texture2D Thumbnail;
             public LevelMetadata Metadata;
 
             public Response(ResponseType message)
             {
                 Message = message;
-                LevelName = "";
                 LevelPath = "";
-                Author = "";
-                Description = "";
+                HeaderSize = 0;
                 Legacy = false;
                 Incompatible = false;
                 BuiltWithVersion = null;
-                Thumbnail = null;
-                HeaderSize = 0;
                 Metadata = default;
             }
 
-            public Response(ResponseType message, bool legacy, string levelPath, LevelMetadata metadata, Texture2D thumbnail, long headerSize, string builtWithVersion = null)
+            public Response(ResponseType message, bool legacy, string levelPath, LevelMetadata metadata, long headerSize, string builtWithVersion = null)
             {
                 Message = message;
-
-                LevelName = metadata.LevelName;
-                Author = metadata.Author;
-                Description = metadata.Description;
                 Metadata = metadata;
-
                 LevelPath = levelPath;
                 Legacy = legacy;
-                Thumbnail = thumbnail;
                 HeaderSize = headerSize;
                 BuiltWithVersion = builtWithVersion;
                 Incompatible = !IsCompatibleVersion(builtWithVersion);
@@ -64,10 +50,10 @@ namespace GOILevelImporter.Core
 
             public enum ResponseType
             {
-                success,
-                metadataNotFound,
-                directoryNotFound,
-                wrongFileType
+                Success,
+                MetadataNotFound,
+                DirectoryCreated,
+                WrongFileType
             }
         }
 
@@ -81,7 +67,7 @@ namespace GOILevelImporter.Core
             if (!Directory.Exists(levelsPath))
             {
                 Directory.CreateDirectory(levelsPath);
-                responses.Add(new Response(Response.ResponseType.directoryNotFound));
+                responses.Add(new Response(Response.ResponseType.DirectoryCreated));
                 return responses.ToArray();
             }
 
@@ -106,7 +92,7 @@ namespace GOILevelImporter.Core
         /// <summary>
         /// Splits scan results into levels that loaded fine and levels that didn't.
         /// </summary>
-        public static bool TrySplitResults(Response[] responses, out Response[] successfulResponses)
+        public static void SplitResults(Response[] responses, out Response[] successfulResponses)
         {
             Menu.LoadingError error = Menu.LoadingError.Instance;
             var successful = new List<Response>();
@@ -115,21 +101,19 @@ namespace GOILevelImporter.Core
             {
                 switch (response.Message)
                 {
-                    case Response.ResponseType.success:
+                    case Response.ResponseType.Success:
                         successful.Add(response);
                         break;
-                    case Response.ResponseType.directoryNotFound:
-                        error.AddError("Level directory created, Please restart the game to load maps", true);
+                    case Response.ResponseType.DirectoryCreated:
+                        error.AddError("Level directory created, please restart the game to load maps", true);
                         break;
-                    case Response.ResponseType.metadataNotFound:
                     default:
-                        error.AddError("An error occured: " + response.Message, true);
+                        error.AddError("An error occurred: " + response.Message, true);
                         break;
                 }
             }
 
             successfulResponses = successful.ToArray();
-            return true;
         }
 
         /// <summary>
@@ -165,7 +149,7 @@ namespace GOILevelImporter.Core
             string builtWith = ReadBundleUnityVersion(path, 0);
 
             var metadata = new LevelMetadata(levelName, author, description, true, false, null, 0, props);
-            return new Response(Response.ResponseType.success, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), 0, builtWith);
+            return new Response(Response.ResponseType.Success, metadata.LegacyMap, path, metadata, 0, builtWith);
         }
 
         /// <summary>
@@ -176,7 +160,7 @@ namespace GOILevelImporter.Core
         {
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
-                return new Response(Response.ResponseType.metadataNotFound);
+                return new Response(Response.ResponseType.MetadataNotFound);
             }
 
             if (path.EndsWith(".scene", StringComparison.OrdinalIgnoreCase))
@@ -189,7 +173,7 @@ namespace GOILevelImporter.Core
                 return ReadGlfLevel(path);
             }
 
-            return new Response(Response.ResponseType.wrongFileType);
+            return new Response(Response.ResponseType.WrongFileType);
         }
 
         private static Response ReadGlfLevel(string path)
@@ -202,7 +186,7 @@ namespace GOILevelImporter.Core
             {
                 if (!reader.ReadBytes(5).SequenceEqual(GlfHeader))
                 {
-                    return new Response(Response.ResponseType.wrongFileType);
+                    return new Response(Response.ResponseType.WrongFileType);
                 }
 
                 int metaDataLength = reader.ReadInt32();
@@ -215,7 +199,7 @@ namespace GOILevelImporter.Core
 
             string builtWith = ReadBundleUnityVersion(path, headerSize);
 
-            return new Response(Response.ResponseType.success, metadata.LegacyMap, path, metadata, metadata.GetThumbnail(), headerSize, builtWith);
+            return new Response(Response.ResponseType.Success, metadata.LegacyMap, path, metadata, headerSize, builtWith);
         }
 
         /// <summary>
