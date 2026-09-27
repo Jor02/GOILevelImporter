@@ -53,6 +53,8 @@ namespace GOILevelImporter.Core.Menu
             RectTransform icon = UiFactory.Stretch("Image", refresh);
             icon.sizeDelta = new Vector2(-9.86f, -9.86f);
             UiFactory.AddImage(icon, UiAssets.RefreshIcon, Color.white, Image.Type.Simple);
+
+            refresh.gameObject.AddComponent<RefreshButtonSpin>();
         }
 
         private static void BuildScrollArea(RectTransform levelArea)
