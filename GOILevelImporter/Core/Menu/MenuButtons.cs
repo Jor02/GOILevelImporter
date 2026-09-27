@@ -11,6 +11,11 @@ namespace GOILevelImporter.Core.Menu
     {
         private GameObject template { get; set; }
 
+        /// <summary>
+        /// A new button is instantiated with no parent and left for the caller
+        /// to place, since the caller usually wants it at a specific sibling
+        /// index rather than appended to a fixed menu.
+        /// </summary>
         public void Init(Transform templateSource)
         {
             template = templateSource.gameObject;

@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,7 +9,7 @@ namespace GOILevelImporter.Core.Menu
         public static GameObject Build(Transform parent)
         {
             RectTransform root = UiFactory.Node("LevelSelect", parent, Vector2.zero, Vector2.one, Vector2.one / 2f, Vector2.zero, new Vector2(-100f, -100f));
-            UiFactory.AddImage(root, null, new Color(0f, 0f, 0f, 0.4f), Image.Type.Sliced);
+            UiFactory.CutCornerPanel(root, RootScrim, RootNotch);
 
             RectTransform topArea = UiFactory.Stretch("TopArea", root);
             topArea.anchoredPosition = new Vector2(0f, 51.425003f);
@@ -40,14 +40,14 @@ namespace GOILevelImporter.Core.Menu
         private static void BuildButtonArea(RectTransform levelArea)
         {
             RectTransform buttonArea = UiFactory.Point("ButtonArea", levelArea);
-            UiFactory.Panel(buttonArea, new Color(0f, 0f, 0f, 0.209f));
+            UiFactory.CutCornerPanel(buttonArea, PanelTint, HeaderNotch);
             UiFactory.Sizing(buttonArea, preferredHeight: 60f);
 
             RectTransform heading = UiFactory.Node("Text", buttonArea, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.one / 2f, new Vector2(172f, -30f), new Vector2(343.9f, 60f));
             UiFactory.Label(heading, "Level select", UiFactory.Heading);
 
             RectTransform refresh = UiFactory.Node("Refresh", buttonArea, RightEdge, RightEdge, RightEdgePivot, new Vector2(-16f, 0f), RefreshSize);
-            UiFactory.SlicedPanel(refresh, new Color(0f, 0f, 0f, 0.866f));
+            UiFactory.CutCornerPanel(refresh, DarkButtonTint, ButtonNotch);
             UiFactory.Button(refresh, UiFactory.ColorBlockFor(DarkButtonTint, UiFactory.HighlightedTint, UiFactory.PressedTint, UiFactory.HighlightedTint));
 
             RectTransform icon = UiFactory.Stretch("Image", refresh);
@@ -58,7 +58,7 @@ namespace GOILevelImporter.Core.Menu
         private static void BuildScrollArea(RectTransform levelArea)
         {
             RectTransform scrollArea = UiFactory.Point("Scroll Area", levelArea);
-            UiFactory.Panel(scrollArea, new Color(0f, 0f, 0f, 0.11f));
+            UiFactory.Panel(scrollArea, PanelWash);
             UiFactory.Sizing(scrollArea, flexibleHeight: 1f);
 
             RectTransform viewport = BuildScrollViewport(scrollArea);
@@ -81,6 +81,8 @@ namespace GOILevelImporter.Core.Menu
 
         private static RectTransform BuildScrollViewport(RectTransform scrollArea)
         {
+            // Plain rectangle on purpose: this carries the scroll Mask, and a notched
+            // mask would clip the cards near its edges into the same angled corners.
             RectTransform viewport = UiFactory.Node("Viewport", scrollArea, Vector2.zero, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero);
             UiFactory.SlicedPanel(viewport, Color.white);
             UiFactory.Clip(viewport, false);
@@ -97,13 +99,24 @@ namespace GOILevelImporter.Core.Menu
 
             GridLayoutGroup grid = content.gameObject.AddComponent<GridLayoutGroup>();
             grid.padding = new RectOffset(13, 13, 13, 0);
-            grid.childAlignment = TextAnchor.UpperCenter;
-            grid.cellSize = new Vector2(CardCellWidth, CardCellHeight);
-            grid.spacing = new Vector2(6.75f, 6.75f);
+            // Was UpperCenter, which centered each row in whatever width was left
+            // over after fitting as many cards as would fit - the reported bug
+            // where cards drift to the middle instead of hugging the left edge.
+            grid.childAlignment = TextAnchor.UpperLeft;
+            grid.spacing = new Vector2(CardSpacing, CardSpacing);
 
             ContentSizeFitter fitter = content.gameObject.AddComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            // Cell size used to be a fixed literal sized for one specific screen
+            // width. This locks the row to Columns cards and keeps recalculating
+            // the cell size to fill whatever width the level list actually has.
+            LevelGridLayout columns = content.gameObject.AddComponent<LevelGridLayout>();
+            columns.Columns = Columns;
+            columns.CardPadding = CardPadding;
+            columns.ThumbnailAspect = ThumbnailAspect;
+            columns.NameStripHeight = CardNameStrip;
 
             BuildLevelButtonTemplate(content);
         }
@@ -111,38 +124,38 @@ namespace GOILevelImporter.Core.Menu
         private static void BuildLevelButtonTemplate(RectTransform content)
         {
             RectTransform button = UiFactory.Point("LevelSection", content);
-            UiFactory.SlicedPanel(button, CardTint);
+            UiFactory.CutCornerPanel(button, CardTint, CardNotch);
             UiFactory.Button(button, CardColorBlock(false));
 
-            float thumbnailWidth = CardCellWidth - (CardPadding * 2f);
-            float thumbnailHeight = thumbnailWidth / ThumbnailAspect;
+            // Stacks the thumbnail and the name strip top to bottom, sized to
+            // whatever width the grid currently hands this card - nothing here is
+            // computed from a fixed pixel width anymore.
+            VerticalLayoutGroup layout = button.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset((int)CardPadding, (int)CardPadding, (int)CardPadding, (int)CardPadding);
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
 
-            RectTransform thumbnail = UiFactory.Stretch("Thumbnail", button);
-            thumbnail.anchorMax = new Vector2(1f, 1f);
-            thumbnail.pivot = new Vector2(0.5f, 1f);
-            thumbnail.anchoredPosition = new Vector2(0f, -CardPadding);
-            thumbnail.sizeDelta = new Vector2(-(CardPadding * 2f), -(CardPadding * 2f + thumbnailHeight));
+            RectTransform thumbnail = UiFactory.Point("Thumbnail", button);
             UiFactory.AddImage(thumbnail, UiAssets.MissingThumb, Color.white, Image.Type.Simple, false, false);
-            UiFactory.Sizing(thumbnail, preferredWidth: 500f, preferredHeight: 278.95f);
 
-            RectTransform textArea = UiFactory.Stretch("TextArea", button);
-            textArea.anchorMax = new Vector2(1f, 1f);
-            textArea.pivot = new Vector2(0.5f, 1f);
-            textArea.anchoredPosition = new Vector2(0f, -(CardPadding * 2f + thumbnailHeight));
-            textArea.sizeDelta = new Vector2(-(CardPadding * 2f), -((CardPadding * 2f + thumbnailHeight) * 2f));
+            // Recomputes the thumbnail's height from whatever width the layout
+            // group above gives it, so the image never gets stretched off its
+            // aspect ratio the way the old fixed-height box used to.
+            AspectRatioFitter fitter = thumbnail.gameObject.AddComponent<AspectRatioFitter>();
+            fitter.aspectMode = AspectRatioFitter.AspectMode.WidthControlsHeight;
+            fitter.aspectRatio = ThumbnailAspect;
+
+            RectTransform textArea = UiFactory.Point("TextArea", button);
+            textArea.sizeDelta = new Vector2(0f, CardNameStrip);
+
+            RectTransform label = UiFactory.Stretch("Label", textArea);
+            TextMeshProUGUI levelLabel = UiFactory.Label(label, string.Empty, UiFactory.CardTitle);
+            levelLabel.overflowMode = TextOverflowModes.Overflow;
+
             button.gameObject.SetActive(false);
-        }
-
-        public static void ConfigureLevelNameLabel(TextMeshProUGUI label)
-        {
-            label.alpha = 1f;
-
-            label.alignment = TextAlignmentOptions.TopLeft;
-            label.horizontalAlignment = HorizontalAlignmentOptions.Left;
-            label.verticalAlignment = VerticalAlignmentOptions.Top;
-            label.enableWordWrapping = true;
-            label.overflowMode = TextOverflowModes.Overflow;
-            label.margin = Vector4.zero;
         }
 
         public static ColorBlock CardColorBlock(bool isSelected)
@@ -158,7 +171,7 @@ namespace GOILevelImporter.Core.Menu
         {
             RectTransform errorScreen = UiFactory.Stretch("ErrorScreen", viewport);
             errorScreen.sizeDelta = new Vector2(-200f, -200f);
-            UiFactory.Panel(errorScreen, new Color(0f, 0f, 0f, 0.472f));
+            UiFactory.CutCornerPanel(errorScreen, PanelTint, SidebarNotch);
 
             RectTransform message = UiFactory.Stretch("Text", errorScreen);
             message.sizeDelta = new Vector2(-42.254997f, -42.255f);
@@ -193,7 +206,7 @@ namespace GOILevelImporter.Core.Menu
         private static RectTransform BuildSidebar(RectTransform topArea)
         {
             RectTransform sidebar = UiFactory.Point("Description", topArea);
-            UiFactory.Panel(sidebar, new Color(0f, 0f, 0f, 0.234f));
+            UiFactory.CutCornerPanel(sidebar, PanelTint, SidebarNotch);
             UiFactory.Clip(sidebar, true);
             UiFactory.Sizing(sidebar, preferredWidth: 500f);
             UiFactory.Column(sidebar, TextAnchor.UpperCenter, 10f, false, false, true, true);
@@ -224,7 +237,7 @@ namespace GOILevelImporter.Core.Menu
         private static void BuildSidebarBody(RectTransform sidebar)
         {
             RectTransform body = UiFactory.Point("Description", sidebar);
-            UiFactory.Panel(body, new Color(0f, 0f, 0f, 0.234f));
+            UiFactory.CutCornerPanel(body, PanelWash, BodyNotch);
             UiFactory.Sizing(body, preferredWidth: 462.4f, flexibleHeight: 1f);
 
             RectTransform text = UiFactory.Stretch("Text", body);
@@ -257,7 +270,7 @@ namespace GOILevelImporter.Core.Menu
         private static void BuildButton(RectTransform parent, string caption, Vector2 position, Vector2 sizeDelta, Vector2 anchorMin, Vector2 anchorMax, Color tint, UiFactory.TextStyle labelStyle)
         {
             RectTransform button = UiFactory.Node("OK", parent, anchorMin, anchorMax, Vector2.one / 2f, position, sizeDelta);
-            UiFactory.SlicedPanel(button, tint);
+            UiFactory.CutCornerPanel(button, tint, ButtonNotch);
             UiFactory.Button(button, UiFactory.ColorBlockFor(tint, UiFactory.HighlightedTint, UiFactory.PressedTint, UiFactory.HighlightedTint));
             UiFactory.Sizing(button, preferredWidth: 500f, preferredHeight: 75.05005f);
 
@@ -268,8 +281,8 @@ namespace GOILevelImporter.Core.Menu
         private static RectTransform BuildCloseButton(RectTransform root)
         {
             RectTransform button = UiFactory.Node("OK", root, new Vector2(0.4146143f, 0.014285714f), new Vector2(0.58615726f, 0.091000006f), Vector2.one / 2f, new Vector2(-0.5f, -0.07751465f), new Vector2(-4.9000244f, 1.7999878f));
-            UiFactory.SlicedPanel(button, new Color(1f, 1f, 1f, 0.722f));
-            UiFactory.Button(button, UiFactory.ColorBlockFor(new Color(1f, 1f, 1f, 0.72156864f), UiFactory.HighlightedTint, UiFactory.PressedTint, UiFactory.HighlightedTint));
+            UiFactory.CutCornerPanel(button, CloseButtonTint, ButtonNotch);
+            UiFactory.Button(button, UiFactory.ColorBlockFor(CloseButtonTint, UiFactory.HighlightedTint, UiFactory.PressedTint, UiFactory.HighlightedTint));
             UiFactory.Sizing(button, preferredWidth: 500f, preferredHeight: 75.05005f);
 
             RectTransform label = UiFactory.Stretch("Text", button);
@@ -280,7 +293,6 @@ namespace GOILevelImporter.Core.Menu
 
         private static readonly Vector2 RefreshAnchorMin = new Vector2(0.41772184f, 0.031000001f);
         private static readonly Vector2 RefreshAnchorMax = new Vector2(0.6141655f, 0.14447679f);
-        private static readonly Color DarkButtonTint = new Color(0f, 0f, 0f, 0.866f);
 
         private static readonly Vector2 RightEdge = new Vector2(1f, 0.5f);
         private static readonly Vector2 RightEdgePivot = new Vector2(1f, 0.5f);
@@ -289,21 +301,42 @@ namespace GOILevelImporter.Core.Menu
         private const float ScrollbarWidth = 22f;
         private const float ScrollbarInset = 5f;
 
-        private const float CardCellWidth = 551.7f;
         private const float CardPadding = 16f;
         private const float ThumbnailAspect = 500f / 278.95f;
         private const float CardNameStrip = 96f;
+        private const float CardSpacing = 6.75f;
 
-        private static readonly float CardCellHeight = (CardPadding * 2f) + ((CardCellWidth - (CardPadding * 2f)) / ThumbnailAspect) + CardNameStrip;
+        // How many level cards fit side by side. The grid recomputes each card's
+        // width - and, from that, its height, to keep the thumbnail's aspect ratio -
+        // to fill the level list at exactly this many columns, however wide the
+        // level list area turns out to be.
+        private const int Columns = 3;
 
-        public static readonly Color CardTint = new Color(1f, 1f, 1f, 0.2f);
-        public static readonly Color CardHoverTint = new Color(1f, 1f, 1f, 0.3f);
-        public static readonly Color CardPressedTint = new Color(1f, 1f, 1f, 0.14f);
-        public static readonly Color CardFocusTint = new Color(1f, 1f, 1f, 0.42f);
+        // How far the cut corner reaches in, in UI units. Bigger panels get a bigger cut
+        // so the accent stays proportionate; small buttons get a subtle one.
+        private const float RootNotch = 40f;
+        private const float HeaderNotch = 14f;
+        private const float SidebarNotch = 28f;
+        private const float BodyNotch = 20f;
+        private const float CardNotch = 16f;
+        private const float ButtonNotch = 14f;
 
-        public static readonly Color SelectedTint = new Color(0.36f, 0.78f, 0.42f, 0.85f);
-        public static readonly Color SelectedHoverTint = new Color(0.45f, 0.86f, 0.5f, 0.92f);
-        public static readonly Color SelectedPressedTint = new Color(0.28f, 0.66f, 0.33f, 0.8f);
-        public static readonly Color SelectedFocusTint = new Color(0.55f, 0.92f, 0.6f, 0.95f);
+        // Slate-and-copper palette: dark, low-saturation panels with a warm accent
+        // reserved for the selected card, instead of the old plain black/white tints.
+        private static readonly Color RootScrim = new Color(0.02f, 0.02f, 0.03f, 0.6f);
+        private static readonly Color PanelTint = new Color(0.07f, 0.08f, 0.1f, 0.78f);
+        private static readonly Color PanelWash = new Color(0.07f, 0.08f, 0.1f, 0.4f);
+        private static readonly Color DarkButtonTint = new Color(0.05f, 0.06f, 0.07f, 0.9f);
+        private static readonly Color CloseButtonTint = new Color(0.9f, 0.91f, 0.93f, 0.85f);
+
+        public static readonly Color CardTint = new Color(1f, 1f, 1f, 0.06f);
+        public static readonly Color CardHoverTint = new Color(1f, 1f, 1f, 0.16f);
+        public static readonly Color CardPressedTint = new Color(1f, 1f, 1f, 0.04f);
+        public static readonly Color CardFocusTint = new Color(1f, 1f, 1f, 0.24f);
+
+        public static readonly Color SelectedTint = new Color(0.86f, 0.58f, 0.24f, 0.85f);
+        public static readonly Color SelectedHoverTint = new Color(0.93f, 0.68f, 0.32f, 0.92f);
+        public static readonly Color SelectedPressedTint = new Color(0.7f, 0.46f, 0.16f, 0.85f);
+        public static readonly Color SelectedFocusTint = new Color(0.97f, 0.75f, 0.4f, 0.95f);
     }
 }

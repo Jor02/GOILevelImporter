@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,7 +10,7 @@ namespace GOILevelImporter.Core.Menu
     class LoadingError : MonoBehaviour
     {
         public static LoadingError Instance { get; private set; }
-        private Text errorText;
+        private TextMeshProUGUI errorText;
         private Transform okButton;
 
         private GameObject contentObject;
@@ -27,7 +28,7 @@ namespace GOILevelImporter.Core.Menu
 
             gameObject.SetActive(false);
 
-            errorText = transform.Find("Text").GetComponent<Text>();
+            errorText = transform.Find("Text").GetComponent<TextMeshProUGUI>();
 
             //Error button
             okButton = transform.Find("OK");

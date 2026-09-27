@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,8 +17,8 @@ namespace GOILevelImporter.Core.Menu
 
         public GameObject ThumbnailObject { get; private set; }
         public Image Thumbnail { get; private set; }
-        public Text Name { get; private set; }
-        public Text Author { get; private set; }
+        public TextMeshProUGUI Name { get; private set; }
+        public TextMeshProUGUI Author { get; private set; }
 
         public CanvasGroup Group { get; private set; }
 
@@ -32,8 +33,8 @@ namespace GOILevelImporter.Core.Menu
             Thumbnail = transform.Find("Transition/LevelInfo/Thumbnail/ThumbnailImage").GetComponent<Image>();
             ThumbnailObject = transform.Find("Transition/LevelInfo/Thumbnail").gameObject;
 
-            Name = transform.Find("Transition/LevelInfo/Name/Title").GetComponent<Text>();
-            Author = transform.Find("Transition/LevelInfo/Name/Author").GetComponent<Text>();
+            Name = transform.Find("Transition/LevelInfo/Name/Title").GetComponent<TextMeshProUGUI>();
+            Author = transform.Find("Transition/LevelInfo/Name/Author").GetComponent<TextMeshProUGUI>();
 
             Group = transform.Find("Transition/").GetComponent<CanvasGroup>();
             Group.alpha = 0;

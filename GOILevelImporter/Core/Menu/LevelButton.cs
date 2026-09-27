@@ -23,8 +23,7 @@ namespace GOILevelImporter.Core.Menu
 
         public LevelButton Init(string levelPath, string levelName, string author, string description, int id, bool legacy, Texture2D thumbnail, Action<int> onClickEvent, long headerSize, Core.LevelMetadata metadata)
         {
-            TextMeshProUGUI levelLabel = transform.Find("TextArea").GetChild(0).GetComponent<TextMeshProUGUI>();
-            LevelSelectView.ConfigureLevelNameLabel(levelLabel);
+            TextMeshProUGUI levelLabel = transform.Find("TextArea/Label").GetComponent<TextMeshProUGUI>();
             levelLabel.text = levelName;
 
             hasThumbnail = (thumbnail != null);

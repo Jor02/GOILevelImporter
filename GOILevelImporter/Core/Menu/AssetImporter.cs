@@ -1,33 +1,30 @@
 ﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using GOILevelImporter.Utils;
-using I2.Loc;
 
 namespace GOILevelImporter.Core.Menu
 {
     static class AssetImporter
     {
-        private const float CardTextPadding = 14f;
-
         public static LevelSelectScreen createLevelSelect(GameObject templateText, Transform parent)
         {
             UiAssets.Load();
 
+            // Borrows the font the game's own menu is already using for its buttons,
+            // since nothing guarantees this game has a default TMP font asset set.
+            TextMeshProUGUI templateLabel = templateText.GetComponent<TextMeshProUGUI>();
+            if (templateLabel != null) UiFactory.SetFont(templateLabel.font);
+
             GameObject levelSelectScreen = LevelSelectView.Build(parent);
 
-            Transform textArea = levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/Content/LevelSection/TextArea");
-            GameObject levelText = GameObject.Instantiate(templateText, textArea);
-            GameObject.Destroy(levelText.GetComponent<Localize>());
+            // The level list's width comes from a HorizontalLayoutGroup dividing
+            // space between it and the sidebar, which Unity would normally only
+            // resolve in its own end-of-frame pass. Forcing it now, before any
+            // level buttons get created, means LevelGridLayout sees the level
+            // list's real width on its very first calculation instead of
+            // whatever default it started life with.
+            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)levelSelectScreen.transform);
 
-            TextMeshProUGUI levelTextMesh = levelText.GetComponent<TextMeshProUGUI>();
-            LevelSelectView.ConfigureLevelNameLabel(levelTextMesh);
-
-            RectTransform levelTextRect = levelText.GetComponent<RectTransform>();
-            levelTextRect.SetStretchAnchor();
-            levelTextRect.SetRect(new Rect(CardTextPadding, CardTextPadding, CardTextPadding, CardTextPadding));
-
-            levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/Content/LevelSection").gameObject.SetActive(false);
             levelSelectScreen.transform.Find("TopArea/Description").gameObject.SetActive(true);
             levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/ErrorScreen").gameObject.AddComponent<LoadingError>().Init(levelSelectScreen.transform.Find("TopArea/Level Area/Scroll Area/Viewport/Content").gameObject);
 
@@ -42,4 +39,3 @@ namespace GOILevelImporter.Core.Menu
         }
     }
 }
-

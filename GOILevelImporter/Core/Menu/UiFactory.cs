@@ -1,3 +1,5 @@
+﻿using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -39,12 +41,22 @@ namespace GOILevelImporter.Core.Menu
         }
 
         /// <summary>
-        /// A nine-sliced rectangle. Defaults to the shared flat skin so every panel and
+        /// A nine-sliced rectangle. Defaults to the shared flat skin so every plain panel and
         /// button shares one square-cornered texture rather than picking its own.
         /// </summary>
         public static Image SlicedPanel(RectTransform rect, Color color, Sprite sprite = null)
         {
             return AddImage(rect, sprite ?? Skin, color, Image.Type.Sliced);
+        }
+
+        /// <summary>
+        /// A nine-sliced rectangle with a flat diagonal cut taken out of the bottom-left
+        /// and top-right corners, for the angular accent look. <paramref name="notchSize"/>
+        /// is how far the cut reaches into the corner, in UI units.
+        /// </summary>
+        public static Image CutCornerPanel(RectTransform rect, Color color, float notchSize)
+        {
+            return AddImage(rect, NotchedSkin(notchSize), color, Image.Type.Sliced);
         }
 
         public static Image AddImage(RectTransform rect, Sprite sprite, Color color, Image.Type type, bool preserveAspect = false, bool raycastTarget = true)
@@ -57,25 +69,25 @@ namespace GOILevelImporter.Core.Menu
             image.raycastTarget = raycastTarget;
             return image;
         }
-
-        public static Text Label(RectTransform rect, string content, TextStyle style)
+        
+        public static TextMeshProUGUI Label(RectTransform rect, string content, TextStyle style)
         {
-            Text text = rect.gameObject.AddComponent<Text>();
-            text.font = Font;
-            text.fontSize = style.size;
-            text.fontStyle = style.fontStyle;
-            text.resizeTextForBestFit = style.bestFit;
-            text.resizeTextMinSize = style.minSize;
-            text.resizeTextMaxSize = style.maxSize;
-            text.alignment = style.alignment;
-            text.supportRichText = style.richText;
-            text.color = style.color;
-            text.raycastTarget = style.raycastTarget;
-            text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Truncate;
-            text.lineSpacing = 1f;
-            text.text = content;
-            return text;
+            TextMeshProUGUI label = rect.gameObject.AddComponent<TextMeshProUGUI>();
+            label.font = Font;
+            if (Font != null) label.fontSharedMaterial = Font.material;
+            label.fontSize = style.size;
+            label.fontStyle = style.fontStyle;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = style.minSize;
+            label.fontSizeMax = style.maxSize;
+            label.alignment = style.alignment;
+            label.richText = style.richText;
+            label.color = style.color;
+            label.raycastTarget = style.raycastTarget;
+            label.enableWordWrapping = true;
+            label.overflowMode = TextOverflowModes.Truncate;
+            label.text = content;
+            return label;
         }
 
         public static Button Button(RectTransform rect, ColorBlock colors)
@@ -86,7 +98,7 @@ namespace GOILevelImporter.Core.Menu
             button.targetGraphic = rect.GetComponent<Graphic>();
             return button;
         }
-        
+
         public static ColorBlock ColorBlockFor(Color normal, Color highlighted, Color pressed, Color selected, bool disabled = true)
         {
             ColorBlock block = new ColorBlock();
@@ -146,15 +158,24 @@ namespace GOILevelImporter.Core.Menu
             return rect.gameObject.AddComponent<CanvasGroup>();
         }
 
-        public static Font Font
+        /// <summary>
+        /// The TMP font asset every label is built with. Set once, from a font asset the
+        /// game's own menu is already using, before building any screen: there's no
+        /// guarantee this game configured a default TMP font asset to fall back on.
+        /// </summary>
+        public static void SetFont(TMP_FontAsset value)
+        {
+            font = value;
+        }
+
+        public static TMP_FontAsset Font
         {
             get
             {
-                if (fontTried) return font;
+                if (font != null) return font;
 
-                fontTried = true;
-                font = Resources.GetBuiltinResource<Font>("Arial.ttf") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                if (font == null) Debug.LogError("[GOI Level Importer] Could not load Unity's built-in font, so level select labels will not render.");
+                font = TMP_Settings.defaultFontAsset;
+                if (font == null) Debug.LogError("[GOI Level Importer] No TextMeshPro font asset available, so level select labels will not render.");
                 return font;
             }
         }
@@ -190,13 +211,66 @@ namespace GOILevelImporter.Core.Menu
             return skinSprite;
         }
 
+        public static Sprite NotchedSkin(float notchSize)
+        {
+            int notch = Mathf.Max(4, Mathf.RoundToInt(notchSize));
+            if (notchedSkins.TryGetValue(notch, out Sprite cached)) return cached;
+
+            // A flat sliver between the cut and the sprite's own edge keeps the diagonal
+            // from touching the seam where the corner tile meets the stretched middle.
+            const int margin = 6;
+            int border = notch + margin;
+            int size = border * 2 + 8;
+
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = "GOILevelImporter.NotchedSkin" + notch,
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    byte alpha = (byte)(255f * CornerCoverage(x, y, size, notch));
+                    pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+
+            const float pixelsPerUnit = 100f;
+            Sprite sprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, size, size),
+                Vector2.one / 2f,
+                pixelsPerUnit,
+                0,
+                SpriteMeshType.FullRect,
+                new Vector4(border, border, border, border));
+
+            notchedSkins[notch] = sprite;
+            return sprite;
+        }
+
+        private static float CornerCoverage(int x, int y, int size, int notch)
+        {
+            float bottomLeftCut = x + y - notch;
+            float topRightCut = (size - 1 - x) + (size - 1 - y) - notch;
+
+            float distanceFromCut = Mathf.Min(bottomLeftCut, topRightCut);
+            return Mathf.Clamp01(distanceFromCut + 0.5f);
+        }
+
         public struct TextStyle
         {
-            public TextStyle(int size, FontStyle fontStyle, bool bestFit, int minSize, int maxSize, TextAnchor alignment, bool richText = true, Color? color = null, bool raycastTarget = true)
+            public TextStyle(float size, FontStyles fontStyle, float minSize, float maxSize, TextAlignmentOptions alignment, bool richText = true, Color? color = null, bool raycastTarget = true)
             {
                 this.size = size;
                 this.fontStyle = fontStyle;
-                this.bestFit = bestFit;
                 this.minSize = minSize;
                 this.maxSize = maxSize;
                 this.alignment = alignment;
@@ -205,34 +279,34 @@ namespace GOILevelImporter.Core.Menu
                 this.raycastTarget = raycastTarget;
             }
 
-            public int size;
-            public FontStyle fontStyle;
-            public bool bestFit;
-            public int minSize;
-            public int maxSize;
-            public TextAnchor alignment;
+            public float size;
+            public FontStyles fontStyle;
+            public float minSize;
+            public float maxSize;
+            public TextAlignmentOptions alignment;
             public bool richText;
             public Color color;
             public bool raycastTarget;
         }
 
-        public static readonly TextStyle Heading = new TextStyle(50, FontStyle.Bold, false, 8, 154, TextAnchor.MiddleCenter);
-        public static readonly TextStyle ButtonLabel = new TextStyle(65, FontStyle.Bold, true, 10, 78, TextAnchor.MiddleCenter);
-        public static readonly TextStyle DarkButtonLabel = new TextStyle(65, FontStyle.Bold, true, 10, 78, TextAnchor.MiddleCenter, true, Color.black);
-        public static readonly TextStyle SidebarHeading = new TextStyle(50, FontStyle.Bold, true, 10, 100, TextAnchor.UpperLeft);
-        public static readonly TextStyle SidebarSubheading = new TextStyle(50, FontStyle.Normal, true, 10, 100, TextAnchor.UpperLeft);
-        public static readonly TextStyle SidebarBody = new TextStyle(28, FontStyle.Normal, true, 0, 35, TextAnchor.UpperLeft);
-        public static readonly TextStyle Warning = new TextStyle(67, FontStyle.Bold, true, 0, 67, TextAnchor.MiddleCenter, false, Color.yellow);
-        public static readonly TextStyle ErrorMessage = new TextStyle(80, FontStyle.Bold, false, 8, 154, TextAnchor.MiddleCenter);
-        public static readonly TextStyle TransitionTitle = new TextStyle(50, FontStyle.Bold, true, 10, 100, TextAnchor.UpperCenter, true, Color.white, false);
-        public static readonly TextStyle TransitionAuthor = new TextStyle(50, FontStyle.Normal, true, 10, 100, TextAnchor.UpperCenter, true, Color.white, false);
+        public static readonly TextStyle Heading = new TextStyle(44f, FontStyles.Bold, 16f, 48f, TextAlignmentOptions.Center);
+        public static readonly TextStyle ButtonLabel = new TextStyle(30f, FontStyles.Bold, 10f, 34f, TextAlignmentOptions.Center);
+        public static readonly TextStyle DarkButtonLabel = new TextStyle(30f, FontStyles.Bold, 10f, 34f, TextAlignmentOptions.Center, true, Color.black);
+        public static readonly TextStyle CardTitle = new TextStyle(26f, FontStyles.Bold, 12f, 30f, TextAlignmentOptions.TopLeft);
+        public static readonly TextStyle SidebarHeading = new TextStyle(34f, FontStyles.Bold, 14f, 38f, TextAlignmentOptions.TopLeft);
+        public static readonly TextStyle SidebarSubheading = new TextStyle(24f, FontStyles.Normal, 12f, 28f, TextAlignmentOptions.TopLeft, true, new Color(1f, 1f, 1f, 0.7f));
+        public static readonly TextStyle SidebarBody = new TextStyle(22f, FontStyles.Normal, 12f, 24f, TextAlignmentOptions.TopLeft);
+        public static readonly TextStyle Warning = new TextStyle(24f, FontStyles.Bold, 12f, 28f, TextAlignmentOptions.Center, false, new Color(1f, 0.82f, 0.4f));
+        public static readonly TextStyle ErrorMessage = new TextStyle(30f, FontStyles.Bold, 14f, 40f, TextAlignmentOptions.Center);
+        public static readonly TextStyle TransitionTitle = new TextStyle(34f, FontStyles.Bold, 14f, 38f, TextAlignmentOptions.Top, true, Color.white, false);
+        public static readonly TextStyle TransitionAuthor = new TextStyle(24f, FontStyles.Normal, 12f, 28f, TextAlignmentOptions.Top, true, new Color(1f, 1f, 1f, 0.75f), false);
 
         public static readonly Color DisabledTint = new Color(0.78431374f, 0.78431374f, 0.78431374f, 0.5019608f);
         public static readonly Color PressedTint = new Color(0.33823532f, 0.33823532f, 0.33823532f, 0.816f);
         public static readonly Color HighlightedTint = new Color(0.61764705f, 0.61764705f, 0.61764705f, 0.741f);
 
-        private static Font font;
-        private static bool fontTried;
+        private static TMP_FontAsset font;
         private static Sprite skinSprite;
+        private static readonly Dictionary<int, Sprite> notchedSkins = new Dictionary<int, Sprite>();
     }
 }
