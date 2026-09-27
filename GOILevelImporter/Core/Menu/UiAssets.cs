@@ -26,24 +26,31 @@ namespace GOILevelImporter.Core.Menu
             LegacyThumb = LoadSprite("LegacyThumb");
             MissingThumb = LoadSprite("MissingThumb");
             TempThumb = LoadSprite("TempThumb");
-            RefreshIcon = LoadSprite("refresh");
-            WarningIcon = LoadSprite("Warning");
+            RefreshIcon = LoadSprite("refresh", mipmaps: true);
+            WarningIcon = LoadSprite("Warning", mipmaps: true);
         }
 
-        private static Sprite LoadSprite(string name)
+        private static Sprite LoadSprite(string name, bool mipmaps = false)
         {
-            return LoadSprite(name, out _);
+            return LoadSprite(name, out _, mipmaps);
         }
 
-        private static Sprite LoadSprite(string name, out Texture2D texture)
+        /// <summary>
+        /// Mipmaps matter for the small UI icons, which ship as large canvases but draw
+        /// into a few dozen pixels. Without them, minification samples one texel per
+        /// screen pixel and hard edges come out aliased instead of filtered.
+        /// </summary>
+        private static Sprite LoadSprite(string name, out Texture2D texture, bool mipmaps = false)
         {
             texture = null;
 
             byte[] png = ReadPng(name);
             if (png == null) return null;
 
-            texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!texture.LoadImage(png))
+            // LoadImage resizes the texture to the PNG's dimensions, so the mipChain flag
+            // has to be set here rather than after decoding.
+            texture = new Texture2D(2, 2, TextureFormat.RGBA32, mipmaps);
+            if (!texture.LoadImage(png, mipmaps))
             {
                 Debug.LogError("[GOI Level Importer] Could not decode the embedded " + name + ".png.");
                 Destroy(texture);
@@ -52,7 +59,7 @@ namespace GOILevelImporter.Core.Menu
             }
             texture.name = name;
             texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
+            texture.filterMode = mipmaps ? FilterMode.Trilinear : FilterMode.Bilinear;
 
             return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), Vector2.one / 2f);
         }
