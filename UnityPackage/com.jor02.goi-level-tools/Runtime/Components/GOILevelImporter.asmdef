@@ -1,6 +1,6 @@
 {
-    "name": "GOILevelImporter.Components",
-    "rootNamespace": "GOILevelImporter.Components",
+    "name": "GOILevelImporter",
+    "rootNamespace": "GOILevelImporter",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

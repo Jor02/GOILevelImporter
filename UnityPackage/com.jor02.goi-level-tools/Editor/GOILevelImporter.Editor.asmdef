@@ -2,7 +2,7 @@
     "name": "GOILevelImporter.Editor",
     "rootNamespace": "GOILevelImporter.Editor",
     "references": [
-        "GOILevelImporter.Components"
+        "GOILevelImporter"
     ],
     "includePlatforms": [
         "Editor"
