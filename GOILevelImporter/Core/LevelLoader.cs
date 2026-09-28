@@ -215,10 +215,11 @@ namespace GOILevelImporter.Core
 
             var settings = LevelSelectionState.Metadata;
 
+            // Deletes all unneeded gameobjects.
+            LevelSceneEffects.Apply(settings);
+
             // Creates the helper component custom level objects look up at runtime.
             new GameObject("ComponentHelper", typeof(Components.ComponentHelper));
-
-            LevelSceneEffects.Apply(settings);
 
             // Fixes an index-out-of-range in PoseControl on levels with nothing wired up to it.
             Resources.FindObjectsOfTypeAll<PoseControl>()[0].SetPrivateFieldValue("interestingItems", new Transform[0]);
