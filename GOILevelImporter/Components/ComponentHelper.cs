@@ -17,7 +17,7 @@ namespace GOILevelImporter.Components
 			Instance = this;
 		}
 
-		public void OnEnabled()
+		public void Start()
 		{
 			player = GameObject.Find("/Player");
 			cursor = GameObject.Find("/Cursor").transform;
