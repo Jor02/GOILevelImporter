@@ -264,10 +264,7 @@ namespace GOILevelImporter.Core.Menu
 
         private static void BuildWarning(RectTransform body)
         {
-            RectTransform warning = UiFactory.Stretch("Warning", body);
-            warning.pivot = new Vector2(0.5f, 0f);
-            warning.anchoredPosition = Vector2.zero;
-            warning.sizeDelta = new Vector2(0f, WarningHeight);
+            RectTransform warning = UiFactory.Node("Warning", body, Vector2.zero, new Vector2(1f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(0f, WarningHeight));
             UiFactory.Panel(warning, new Color(0f, 0f, 0f, 0.428f));
 
             RectTransform symbol = UiFactory.Node("WarningSymbol", warning, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(8f, 0f), new Vector2(WarningHeight, WarningHeight));
