@@ -1,20 +1,24 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
 namespace GOILevelImporter.Components
 {
-	class ComponentHelper : MonoBehaviour
+	public class ComponentHelper : MonoBehaviour
 	{
 		public static ComponentHelper Instance { get; private set; }
-		public GameObject player { get; }
-		public Transform cursor { get; }
-		public Transform camera { get; }
+		public GameObject player { get; private set; }
+		public Transform cursor { get; private set; }
+		public Transform camera { get; private set; }
 
-		public ComponentHelper()
+		public void Awake()
 		{
 			Instance = this;
+		}
+
+		public void OnEnabled()
+		{
 			player = GameObject.Find("/Player");
 			cursor = GameObject.Find("/Cursor").transform;
 			camera = GameObject.Find("/Main Camera").transform;
