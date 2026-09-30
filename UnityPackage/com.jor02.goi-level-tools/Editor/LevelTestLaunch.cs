@@ -54,7 +54,7 @@ public static class LevelTestLaunch
 
         if (versionProblem != null)
         {
-            // The game cannot open a bundle built by another Unity version, so
+            // The game cannot open a bundle built by a newer Unity than its own, so
             // launching it here would only show a load failure.
             EditorUtility.DisplayDialog("Test Level", versionProblem, "OK");
             return;

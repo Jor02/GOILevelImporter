@@ -126,44 +126,62 @@ public static class LevelBuilder
     }
 
     /// <summary>
-    /// Null when the editor and the game share a Unity version, otherwise a
-    /// message explaining why a bundle built here will not load in the game.
-    /// Only the major and minor parts are compared, since Unity keeps bundle
-    /// compatibility across patches of the same version line.
+    /// Null when the game can load a bundle built here, otherwise a message
+    /// explaining why it would not.
     /// </summary>
     public static string GetUnityVersionProblem()
     {
         string gameVersion = GoiInstall.GameUnityVersion;
 
-        if (string.IsNullOrEmpty(gameVersion) || SameVersionLine(Application.unityVersion, gameVersion))
+        if (string.IsNullOrEmpty(gameVersion) || !IsEditorNewer(Application.unityVersion, gameVersion))
         {
             return null;
         }
 
-        string versionLine = string.Join(".", gameVersion.Split('.').Take(2));
-
         return "This project is open in Unity " + Application.unityVersion + ", but Getting Over It runs Unity " + gameVersion +
-               ". Unity only loads asset bundles built with the same version line, so the game rejects the .glf with " +
-               "'Unable to read header from archive file'. Install Unity " + versionLine +
-               " through Unity Hub and open this project with it before building or testing a level.";
+               ". The game refuses asset bundles built with a newer Unity than its own, so it would reject this .glf with " +
+               "'Unable to read header from archive file'. Unity Hub can install Unity " + gameVersion +
+               ", and the game accepts a level built with that version or any older one.";
     }
 
     /// <summary>
-    /// Compares the major and minor components of two Unity versions. Anything
-    /// unparsable counts as a match so a version string this code does not
-    /// expect never blocks a build.
-    /// </summary>
-    private static bool SameVersionLine(string editorVersion, string gameVersion)
+    /// True when the editor's Unity version comes after the game's.
+    private static bool IsEditorNewer(string editorVersion, string gameVersion)
     {
-        string[] editorParts = editorVersion?.Split('.');
-        string[] gameParts = gameVersion.Split('.');
+        int[] editor = ParseVersionNumbers(editorVersion);
+        int[] game = ParseVersionNumbers(gameVersion);
 
-        if (editorParts == null || editorParts.Length < 2 || gameParts.Length < 2)
+        if (editor == null || game == null) return false;
+
+        for (int i = 0; i < editor.Length && i < game.Length; i++)
         {
-            return true;
+            if (editor[i] != game[i]) return editor[i] > game[i];
         }
 
-        return editorParts[0] == gameParts[0] && editorParts[1] == gameParts[1];
+        return false;
+    }
+
+    /// <summary>
+    /// Compares the major and minor components of two Unity versions.
+    /// </summary>
+    private static int[] ParseVersionNumbers(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version)) return null;
+
+        string[] chunks = version.Split('.');
+        if (chunks.Length < 2) return null;
+
+        var numbers = new int[chunks.Length];
+
+        for (int i = 0; i < chunks.Length; i++)
+        {
+            int digits = 0;
+            while (digits < chunks[i].Length && char.IsDigit(chunks[i][digits])) digits++;
+
+            if (digits == 0 || !int.TryParse(chunks[i].Substring(0, digits), out numbers[i])) return null;
+        }
+
+        return numbers;
     }
 
     /// <summary>

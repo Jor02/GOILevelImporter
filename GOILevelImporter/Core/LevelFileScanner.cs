@@ -71,8 +71,10 @@ namespace GOILevelImporter.Core
                 return responses.ToArray();
             }
 
-            var levelFiles = Directory.GetFiles(levelsPath)
-                .Where(name => !name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase));
+            var levelFiles = Directory.GetFiles(levelsPath, "*", SearchOption.AllDirectories)
+                .Where(name => !name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
+                    && !name.EndsWith(".mdata", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
 
             foreach (string path in levelFiles)
             {
