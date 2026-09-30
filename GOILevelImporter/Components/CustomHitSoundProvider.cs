@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace GOILevelImporter.Components
 {
-	public class CustomHitSoundProvider : MonoBehaviour
+	public class CustomMaterialProvider : MonoBehaviour
 	{
 		private void Awake()
 		{
@@ -43,5 +43,15 @@ namespace GOILevelImporter.Components
 
 		public CustomHitSound[] hitSounds;
 		public Dictionary<string, CustomHitSound> hitDict = new Dictionary<string, CustomHitSound>();
+
+		public bool IsSolid(string mat)
+		{
+			if (this.hitDict.ContainsKey(mat))
+			{
+				return this.hitDict[mat].isSolid;
+			}
+
+			return false;
+		}
 	}
 }

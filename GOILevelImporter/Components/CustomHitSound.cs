@@ -38,5 +38,7 @@ namespace GOILevelImporter.Components
 		public List<AudioClip> hits;
 		public List<AudioClip> hardHits;
 		public List<AudioClip> scrapes;
+
+		public bool isSolid;
 	}
 }
