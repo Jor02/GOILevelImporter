@@ -233,30 +233,74 @@ namespace GOILevelImporter.Core
 
         public static bool IsCompatibleVersion(string builtWith)
         {
-            if (!TryParseVersionLine(builtWith, out int major, out int minor)) return true;
-            if (!TryParseVersionLine(Application.unityVersion, out int playerMajor, out int playerMinor)) return true;
+            if (!TryParseVersion(builtWith, out UnityVersion built)) return true;
+            if (!TryParseVersion(Application.unityVersion, out UnityVersion player)) return true;
 
-            return major == playerMajor && minor == playerMinor;
+            return Compare(built, player) <= 0;
         }
 
-        private static bool TryParseVersionLine(string version, out int major, out int minor)
+        /// <summary>
+        /// The ordered pieces of a Unity version line.
+        /// </summary>
+        private struct UnityVersion
         {
-            major = 0;
-            minor = 0;
+            public int Major;
+            public int Minor;
+            public int Patch;
+            public char Release;
+            public int ReleaseNumber;
+        }
+
+        private static int Compare(UnityVersion a, UnityVersion b)
+        {
+            if (a.Major != b.Major) return a.Major.CompareTo(b.Major);
+            if (a.Minor != b.Minor) return a.Minor.CompareTo(b.Minor);
+            if (a.Patch != b.Patch) return a.Patch.CompareTo(b.Patch);
+
+            if (a.Release != '\0' && b.Release != '\0')
+            {
+                if (a.Release != b.Release) return a.Release.CompareTo(b.Release);
+                if (a.ReleaseNumber != b.ReleaseNumber) return a.ReleaseNumber.CompareTo(b.ReleaseNumber);
+            }
+
+            return 0;
+        }
+
+        private static bool TryParseVersion(string version, out UnityVersion parsed)
+        {
+            parsed = default;
 
             if (string.IsNullOrWhiteSpace(version)) return false;
 
-            string[] parts = version.Split('.');
-            if (parts.Length < 2) return false;
+            string[] chunks = version.Split('.');
+            if (chunks.Length < 2) return false;
 
-            if (!int.TryParse(parts[0], out major)) return false;
+            if (!TryReadLeadingInt(chunks[0], out parsed.Major)) return false;
+            if (!TryReadLeadingInt(chunks[1], out parsed.Minor)) return false;
 
-            string patch = parts[1];
-            int suffix = patch.IndexOfAny(new[] { 'f', 'p', 'b', 'a', 'x' });
-            if (suffix >= 0) patch = patch.Substring(0, suffix);
+            if (chunks.Length < 3) return true;
 
-            return int.TryParse(patch, out minor);
+            if (!TryReadLeadingInt(chunks[2], out parsed.Patch)) return false;
+
+            int tagAt = chunks[2].IndexOfAny(ReleaseTags);
+            if (tagAt < 0) return true;
+
+            parsed.Release = chunks[2][tagAt];
+            TryReadLeadingInt(chunks[2].Substring(tagAt + 1), out parsed.ReleaseNumber);
+            return true;
         }
+
+        private static bool TryReadLeadingInt(string chunk, out int value)
+        {
+            value = 0;
+
+            int digits = 0;
+            while (digits < chunk.Length && char.IsDigit(chunk[digits])) digits++;
+
+            return digits > 0 && int.TryParse(chunk.Substring(0, digits), out value);
+        }
+
+        private static readonly char[] ReleaseTags = { 'a', 'b', 'f', 'p', 'x' };
 
         private static string ReadNullTerminatedString(Stream stream)
         {
